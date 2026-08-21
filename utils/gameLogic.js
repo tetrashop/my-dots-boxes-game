@@ -1,60 +1,54 @@
 export class GameLogic {
-  constructor(gridSize = 4) {
+  constructor(gridSize = 4, numPlayers = 2) {
     this.gridSize = gridSize;
+    this.numPlayers = numPlayers;
     this.reset();
   }
 
   reset() {
-    this.horizontalLines = Array.from({ length: this.gridSize - 1 }, () =>
-      Array(this.gridSize - 1).fill(false)
-    );
-    this.verticalLines = Array.from({ length: this.gridSize - 1 }, () =>
-      Array(this.gridSize - 1).fill(false)
-    );
-    this.boxes = Array.from({ length: this.gridSize - 1 }, () =>
-      Array(this.gridSize - 1).fill(0)
-    );
-    this.scores = [0, 0];
+    const size = this.gridSize - 1;
+    this.horizontalLines = Array.from({ length: size }, () => Array(size).fill(false));
+    this.verticalLines = Array.from({ length: size }, () => Array(size).fill(false));
+    this.boxes = Array.from({ length: size }, () => Array(size).fill(0));
+    this.scores = Array(this.numPlayers).fill(0);
     this.currentPlayer = 0;
     this.gameOver = false;
     this.moveHistory = [];
     this.lastFilledBoxes = [];
+    this.totalMoves = 0;
   }
 
   makeMove(row, col, isHorizontal, player) {
     if (this.gameOver) return { success: false, reason: 'game_over' };
     if (player !== this.currentPlayer) return { success: false, reason: 'wrong_turn' };
 
-    // بررسی معتبر بودن حرکت
+    const size = this.gridSize - 1;
+    
     if (isHorizontal) {
-      if (row < 0 || row >= this.gridSize - 1 || col < 0 || col >= this.gridSize - 2)
+      if (row < 0 || row >= size || col < 0 || col >= size - 1)
         return { success: false, reason: 'invalid_position' };
       if (this.horizontalLines[row][col])
         return { success: false, reason: 'already_drawn' };
       this.horizontalLines[row][col] = true;
     } else {
-      if (row < 0 || row >= this.gridSize - 2 || col < 0 || col >= this.gridSize - 1)
+      if (row < 0 || row >= size - 1 || col < 0 || col >= size)
         return { success: false, reason: 'invalid_position' };
       if (this.verticalLines[row][col])
         return { success: false, reason: 'already_drawn' };
       this.verticalLines[row][col] = true;
     }
 
+    this.totalMoves++;
     this.moveHistory.push({ row, col, isHorizontal, player });
     
-    // بررسی مربع‌ها
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
     const filledCount = filledBoxes.length;
-    
-    // ثبت مربع‌های پر شده برای انیمیشن
     this.lastFilledBoxes = filledBoxes;
 
-    // تغییر نوبت (اگر مربعی پر نشده باشد)
     if (filledCount === 0) {
-      this.currentPlayer = 1 - this.currentPlayer;
+      this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
     }
 
-    // بررسی پایان بازی
     this.gameOver = this.checkGameOver();
 
     return {
@@ -69,15 +63,16 @@ export class GameLogic {
 
   checkAndFillBoxes(row, col, isHorizontal, player) {
     const filledBoxes = [];
+    const size = this.gridSize - 1;
     
     const checkBox = (r, c) => {
-      if (r < 0 || r >= this.gridSize - 1 || c < 0 || c >= this.gridSize - 1) return false;
+      if (r < 0 || r >= size || c < 0 || c >= size) return false;
       if (this.boxes[r][c] !== 0) return false;
       
       const top = this.horizontalLines[r][c];
-      const bottom = r + 1 < this.gridSize - 1 ? this.horizontalLines[r + 1][c] : false;
+      const bottom = r + 1 < size ? this.horizontalLines[r + 1][c] : false;
       const left = this.verticalLines[r][c];
-      const right = c + 1 < this.gridSize - 1 ? this.verticalLines[r][c + 1] : false;
+      const right = c + 1 < size ? this.verticalLines[r][c + 1] : false;
       
       if (top && bottom && left && right) {
         this.boxes[r][c] = player;
@@ -89,24 +84,20 @@ export class GameLogic {
     };
 
     if (isHorizontal) {
-      // بررسی مربع بالا
       if (row > 0) checkBox(row - 1, col);
-      // بررسی مربع پایین
-      if (row < this.gridSize - 1) checkBox(row, col);
+      if (row < size) checkBox(row, col);
     } else {
-      // بررسی مربع چپ
       if (col > 0) checkBox(row, col - 1);
-      // بررسی مربع راست
-      if (col < this.gridSize - 1) checkBox(row, col);
+      if (col < size) checkBox(row, col);
     }
     
     return filledBoxes;
   }
 
   checkGameOver() {
-    // بررسی اینکه آیا همه مربع‌ها پر شده‌اند
-    for (let r = 0; r < this.gridSize - 1; r++) {
-      for (let c = 0; c < this.gridSize - 1; c++) {
+    const size = this.gridSize - 1;
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
         if (this.boxes[r][c] === 0) return false;
       }
     }
@@ -115,50 +106,60 @@ export class GameLogic {
 
   getWinner() {
     if (!this.gameOver) return null;
-    if (this.scores[0] > this.scores[1]) return 0;
-    if (this.scores[1] > this.scores[0]) return 1;
-    return -1;
+    const maxScore = Math.max(...this.scores);
+    const winners = this.scores.map((s, i) => s === maxScore ? i : -1).filter(i => i >= 0);
+    return winners.length === 1 ? winners[0] : -1;
   }
 
-  // هوش مصنوعی
-  getAIMove() {
-    // اولویت با حرکت مربع‌ساز
-    for (let r = 0; r < this.gridSize - 1; r++) {
-      for (let c = 0; c < this.gridSize - 2; c++) {
+  getAIMove(player) {
+    if (this.currentPlayer !== player) return null;
+    
+    const size = this.gridSize - 1;
+    let bestMoves = [];
+    let regularMoves = [];
+
+    // بررسی تمام حرکات ممکن
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size - 1; c++) {
         if (!this.horizontalLines[r][c]) {
-          const filled = this.simulateMove(r, c, true);
-          if (filled.length > 0) return { row: r, col: c, isHorizontal: true };
+          const filled = this.simulateMove(r, c, true, player + 1);
+          if (filled.length > 0) {
+            bestMoves.push({ row: r, col: c, isHorizontal: true, priority: filled.length });
+          } else {
+            regularMoves.push({ row: r, col: c, isHorizontal: true });
+          }
         }
       }
     }
-    for (let r = 0; r < this.gridSize - 2; r++) {
-      for (let c = 0; c < this.gridSize - 1; c++) {
+    for (let r = 0; r < size - 1; r++) {
+      for (let c = 0; c < size; c++) {
         if (!this.verticalLines[r][c]) {
-          const filled = this.simulateMove(r, c, false);
-          if (filled.length > 0) return { row: r, col: c, isHorizontal: false };
+          const filled = this.simulateMove(r, c, false, player + 1);
+          if (filled.length > 0) {
+            bestMoves.push({ row: r, col: c, isHorizontal: false, priority: filled.length });
+          } else {
+            regularMoves.push({ row: r, col: c, isHorizontal: false });
+          }
         }
       }
+    }
+
+    // اولویت با حرکتی که بیشترین مربع را می‌سازد
+    if (bestMoves.length > 0) {
+      bestMoves.sort((a, b) => b.priority - a.priority);
+      return bestMoves[0];
     }
 
     // حرکت تصادفی
-    let moves = [];
-    for (let r = 0; r < this.gridSize - 1; r++) {
-      for (let c = 0; c < this.gridSize - 2; c++) {
-        if (!this.horizontalLines[r][c]) moves.push({ row: r, col: c, isHorizontal: true });
-      }
-    }
-    for (let r = 0; r < this.gridSize - 2; r++) {
-      for (let c = 0; c < this.gridSize - 1; c++) {
-        if (!this.verticalLines[r][c]) moves.push({ row: r, col: c, isHorizontal: false });
-      }
-    }
-    if (moves.length === 0) return null;
-    return moves[Math.floor(Math.random() * moves.length)];
+    if (regularMoves.length === 0) return null;
+    return regularMoves[Math.floor(Math.random() * regularMoves.length)];
   }
 
-  simulateMove(row, col, isHorizontal) {
+  simulateMove(row, col, isHorizontal, player) {
     const backupHorizontal = this.horizontalLines.map(row => [...row]);
     const backupVertical = this.verticalLines.map(row => [...row]);
+    const backupBoxes = this.boxes.map(row => [...row]);
+    const backupScores = [...this.scores];
     
     if (isHorizontal) {
       this.horizontalLines[row][col] = true;
@@ -167,30 +168,52 @@ export class GameLogic {
     }
     
     const filled = [];
+    const size = this.gridSize - 1;
+    
     const checkBox = (r, c) => {
-      if (r < 0 || r >= this.gridSize - 1 || c < 0 || c >= this.gridSize - 1) return;
+      if (r < 0 || r >= size || c < 0 || c >= size) return;
       if (this.boxes[r][c] !== 0) return;
       const top = this.horizontalLines[r][c];
-      const bottom = r + 1 < this.gridSize - 1 ? this.horizontalLines[r + 1][c] : false;
+      const bottom = r + 1 < size ? this.horizontalLines[r + 1][c] : false;
       const left = this.verticalLines[r][c];
-      const right = c + 1 < this.gridSize - 1 ? this.verticalLines[r][c + 1] : false;
+      const right = c + 1 < size ? this.verticalLines[r][c + 1] : false;
       if (top && bottom && left && right) {
+        this.boxes[r][c] = player;
+        this.scores[player - 1]++;
         filled.push({ row: r, col: c });
       }
     };
     
     if (isHorizontal) {
       if (row > 0) checkBox(row - 1, col);
-      if (row < this.gridSize - 1) checkBox(row, col);
+      if (row < size) checkBox(row, col);
     } else {
       if (col > 0) checkBox(row, col - 1);
-      if (col < this.gridSize - 1) checkBox(row, col);
+      if (col < size) checkBox(row, col);
     }
     
     // بازگرداندن وضعیت
     this.horizontalLines = backupHorizontal;
     this.verticalLines = backupVertical;
+    this.boxes = backupBoxes;
+    this.scores = backupScores;
     
     return filled;
+  }
+
+  getRemainingMoves() {
+    const size = this.gridSize - 1;
+    let count = 0;
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size - 1; c++) {
+        if (!this.horizontalLines[r][c]) count++;
+      }
+    }
+    for (let r = 0; r < size - 1; r++) {
+      for (let c = 0; c < size; c++) {
+        if (!this.verticalLines[r][c]) count++;
+      }
+    }
+    return count;
   }
 }

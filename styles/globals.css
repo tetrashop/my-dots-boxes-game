@@ -12,7 +12,7 @@ body {
 }
 
 .container {
-  max-width: 900px;
+  max-width: 1100px;
   margin: 0 auto;
   background: white;
   border-radius: 30px;
@@ -25,101 +25,6 @@ h1 {
   color: #1a202c;
   font-size: 2rem;
   margin-bottom: 20px;
-}
-
-.settings-section {
-  background: #f7fafc;
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.color-picker {
-  display: flex;
-  gap: 30px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.color-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.color-group label {
-  font-weight: 600;
-  color: #2d3748;
-}
-
-.color-group input[type="color"] {
-  width: 50px;
-  height: 50px;
-  border: 3px solid #cbd5e0;
-  border-radius: 12px;
-  cursor: pointer;
-  padding: 2px;
-}
-
-.game-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #edf2f7;
-  padding: 15px 20px;
-  border-radius: 16px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.player-score {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  font-size: 1.1rem;
-}
-
-.color-indicator {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  border: 2px solid #a0aec0;
-}
-
-.turn-badge {
-  background: #4299e1;
-  color: white;
-  padding: 8px 20px;
-  border-radius: 30px;
-  font-weight: 700;
-  font-size: 1rem;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
-
-.canvas-wrapper {
-  position: relative;
-  margin: 20px auto;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-canvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1/1;
-  cursor: pointer;
-  touch-action: none;
-  border-radius: 16px;
 }
 
 .controls {
@@ -156,17 +61,6 @@ button.reset:hover {
   box-shadow: 0 8px 20px rgba(245, 101, 101, 0.4);
 }
 
-.winner-message {
-  text-align: center;
-  font-size: 1.5rem;
-  font-weight: 800;
-  padding: 15px;
-  margin-top: 15px;
-  border-radius: 16px;
-  background: #f0fff4;
-  color: #22543d;
-}
-
 .test-results {
   background: #fefcbf;
   border-radius: 12px;
@@ -184,6 +78,25 @@ button.reset:hover {
 
 @media (max-width: 600px) {
   .container { padding: 15px; }
-  .color-picker { flex-direction: column; align-items: center; }
-  .game-info { flex-direction: column; align-items: center; }
+  .controls { flex-direction: column; align-items: center; }
+}
+
+/* اسکرول بار سفارشی */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
 }

@@ -1,24 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GameLogic } from '../utils/gameLogic';
 import Board from '../components/Board';
-import PlayerSettings from '../components/PlayerSettings';
+import GameSettings from '../components/GameSettings';
 import GameStatus from '../components/GameStatus';
 
 export default function Home() {
-  const [game] = useState(() => new GameLogic(4));
-  const [player1Color, setPlayer1Color] = useState('#ef4444');
-  const [player2Color, setPlayer2Color] = useState('#3b82f6');
+  const [game, setGame] = useState(null);
   const [gameState, setGameState] = useState({
-    scores: [0, 0],
+    scores: [],
     currentPlayer: 0,
     gameOver: false,
     winner: null
   });
+  const [playerColors, setPlayerColors] = useState(['#ef4444', '#3b82f6']);
+  const [gridSize, setGridSize] = useState(4);
+  const [numPlayers, setNumPlayers] = useState(2);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [testResults, setTestResults] = useState([]);
+  const [gameStarted, setGameStarted] = useState(false);
 
-  // تابع به‌روزرسانی وضعیت
   const updateGameState = useCallback(() => {
+    if (!game) return;
     setGameState({
       scores: [...game.scores],
       currentPlayer: game.currentPlayer,
@@ -27,34 +29,48 @@ export default function Home() {
     });
   }, [game]);
 
-  // حرکت هوش مصنوعی
   const makeAIMove = useCallback(() => {
-    if (game.gameOver || game.currentPlayer !== 1 || isAIThinking) return;
+    if (!game || game.gameOver || game.currentPlayer === 0 || isAIThinking) return;
 
     setIsAIThinking(true);
     setTimeout(() => {
-      const move = game.getAIMove();
+      const move = game.getAIMove(game.currentPlayer);
       if (move) {
-        const result = game.makeMove(move.row, move.col, move.isHorizontal, 1);
+        const result = game.makeMove(move.row, move.col, move.isHorizontal, game.currentPlayer);
         updateGameState();
-        if (!result.gameOver && game.currentPlayer === 1) {
+        if (!result.gameOver && game.currentPlayer !== 0 && game.currentPlayer < numPlayers) {
           makeAIMove();
         }
       }
       setIsAIThinking(false);
-    }, 500);
-  }, [game, isAIThinking, updateGameState]);
+    }, 400 + Math.random() * 300);
+  }, [game, isAIThinking, updateGameState, numPlayers]);
 
-  // اجرای هوش مصنوعی هنگام تغییر نوبت
   useEffect(() => {
-    if (game.currentPlayer === 1 && !game.gameOver) {
+    if (game && game.currentPlayer !== 0 && !game.gameOver) {
       makeAIMove();
     }
-  }, [game.currentPlayer, game.gameOver, makeAIMove]);
+  }, [game, game?.currentPlayer, game?.gameOver, makeAIMove]);
 
-  // حرکت بازیکن
+  const handleStartGame = ({ gridSize: size, numPlayers: players, playerColors: colors }) => {
+    const newGame = new GameLogic(size, players);
+    setGame(newGame);
+    setPlayerColors(colors);
+    setGridSize(size);
+    setNumPlayers(players);
+    setGameStarted(true);
+    setGameState({
+      scores: Array(players).fill(0),
+      currentPlayer: 0,
+      gameOver: false,
+      winner: null
+    });
+    setIsAIThinking(false);
+    setTestResults([]);
+  };
+
   const handlePlayerMove = (row, col, isHorizontal) => {
-    if (game.gameOver || game.currentPlayer !== 0 || isAIThinking) return;
+    if (!game || game.gameOver || game.currentPlayer !== 0 || isAIThinking) return;
 
     const result = game.makeMove(row, col, isHorizontal, 0);
     if (result.success) {
@@ -62,69 +78,112 @@ export default function Home() {
     }
   };
 
-  // ریست بازی
   const resetGame = () => {
-    game.reset();
-    updateGameState();
-    setIsAIThinking(false);
+    if (game) {
+      game.reset();
+      updateGameState();
+      setIsAIThinking(false);
+    }
   };
 
-  // تست خودکار
   const runTests = () => {
     const results = [];
-    const testGame = new GameLogic(3);
-
+    
     // تست 1: حرکت معتبر
+    const testGame = new GameLogic(3, 2);
     const move1 = testGame.makeMove(0, 0, true, 0);
     results.push({
-      name: 'تست حرکت معتبر',
+      name: 'حرکت معتبر',
       passed: move1.success === true,
-      message: move1.success ? '✅ حرکت با موفقیت انجام شد' : '❌ خطا در حرکت معتبر'
+      message: move1.success ? '✅ موفق' : '❌ خطا'
     });
 
-    // تست 2: جلوگیری از حرکت تکراری
+    // تست 2: حرکت تکراری
     const move2 = testGame.makeMove(0, 0, true, 0);
     results.push({
-      name: 'تست جلوگیری از حرکت تکراری',
+      name: 'جلوگیری از حرکت تکراری',
       passed: move2.success === false && move2.reason === 'already_drawn',
-      message: move2.success === false ? '✅ حرکت تکراری شناسایی شد' : '❌ خطا در تشخیص حرکت تکراری'
+      message: move2.success === false ? '✅ موفق' : '❌ خطا'
     });
 
     // تست 3: تشخیص نوبت
     const move3 = testGame.makeMove(0, 1, true, 1);
     results.push({
-      name: 'تست تشخیص نوبت',
+      name: 'تشخیص نوبت',
       passed: move3.success === false && move3.reason === 'wrong_turn',
-      message: move3.success === false ? '✅ حرکت در نوبت اشتباه رد شد' : '❌ خطا در تشخیص نوبت'
+      message: move3.success === false ? '✅ موفق' : '❌ خطا'
     });
 
-    // تست 4: ساختن مربع
-    const game4 = new GameLogic(2);
+    // تست 4: ساخت مربع
+    const game4 = new GameLogic(2, 2);
     game4.makeMove(0, 0, true, 0);
     game4.makeMove(0, 0, false, 1);
     game4.makeMove(1, 0, true, 0);
     const move4 = game4.makeMove(1, 0, false, 1);
     results.push({
-      name: 'تست ساختن مربع',
+      name: 'ساخت مربع',
       passed: move4.success && move4.filled > 0,
-      message: move4.success && move4.filled > 0 ? '✅ مربع ساخته شد' : '❌ خطا در ساخت مربع'
+      message: move4.success && move4.filled > 0 ? '✅ موفق' : '❌ خطا'
+    });
+
+    // تست 5: بازی با 3 بازیکن
+    const game5 = new GameLogic(3, 3);
+    const move5 = game5.makeMove(0, 0, true, 0);
+    results.push({
+      name: 'بازی با 3 بازیکن',
+      passed: move5.success === true && game5.numPlayers === 3,
+      message: move5.success ? '✅ موفق' : '❌ خطا'
     });
 
     setTestResults(results);
   };
 
+  if (!gameStarted) {
+    return (
+      <div className="container">
+        <h1>🧩 بازی مربع‌سازی</h1>
+        <p style={{ textAlign: 'center', color: '#4a5568', marginBottom: '20px' }}>
+          تنظیمات بازی را انتخاب کنید و شروع کنید!
+        </p>
+        <GameSettings onStartGame={handleStartGame} />
+        <div style={{ marginTop: '20px' }}>
+          <button onClick={runTests} style={{ 
+            background: '#48bb78', 
+            padding: '10px 20px',
+            border: 'none',
+            borderRadius: '40px',
+            color: 'white',
+            fontWeight: '700',
+            cursor: 'pointer'
+          }}>
+            🧪 تست خودکار
+          </button>
+          {testResults.length > 0 && (
+            <div style={{
+              marginTop: '15px',
+              background: '#fefcbf',
+              padding: '15px',
+              borderRadius: '12px'
+            }}>
+              <h4>📊 نتایج تست:</h4>
+              <pre style={{ whiteSpace: 'pre-wrap' }}>
+                {testResults.map((r, i) => `${i+1}. ${r.name}: ${r.message}`).join('\n')}
+              </pre>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container">
       <h1>🧩 بازی مربع‌سازی</h1>
-      <p style={{ textAlign: 'center', color: '#4a5568', marginBottom: '20px' }}>
-        نقاط را به هم وصل کنید و مربع بسازید!
-      </p>
-
-      <PlayerSettings
-        player1Color={player1Color}
-        player2Color={player2Color}
-        onPlayer1ColorChange={setPlayer1Color}
-        onPlayer2ColorChange={setPlayer2Color}
+      
+      <GameSettings 
+        onStartGame={handleStartGame}
+        initialGridSize={gridSize}
+        initialPlayers={numPlayers}
       />
 
       <GameStatus
@@ -132,20 +191,25 @@ export default function Home() {
         currentPlayer={gameState.currentPlayer}
         gameOver={gameState.gameOver}
         winner={gameState.winner}
-        player1Color={player1Color}
-        player2Color={player2Color}
+        playerColors={playerColors}
+        numPlayers={numPlayers}
+        remainingMoves={game?.getRemainingMoves() || 0}
       />
 
-      <Board
-        game={game}
-        onMove={handlePlayerMove}
-        player1Color={player1Color}
-        player2Color={player2Color}
-      />
+      {game && (
+        <Board
+          game={game}
+          onMove={handlePlayerMove}
+          playerColors={playerColors}
+          gridSize={gridSize}
+        />
+      )}
 
       <div className="controls">
         <button onClick={resetGame}>🔄 بازی جدید</button>
-        <button className="reset" onClick={resetGame}>🗑️ ریست کامل</button>
+        <button className="reset" onClick={() => { setGameStarted(false); setGame(null); }}>
+          🏠 بازگشت به تنظیمات
+        </button>
         <button onClick={runTests} style={{ background: '#48bb78' }}>
           🧪 تست خودکار
         </button>
