@@ -15,7 +15,6 @@ export class GameLogic {
     this.gameOver = false;
     this.moveHistory = [];
     this.totalMoves = 0;
-    this.lastMove = null;
   }
 
   makeMove(row, col, isHorizontal, player) {
@@ -39,7 +38,6 @@ export class GameLogic {
     }
 
     this.totalMoves++;
-    this.lastMove = { row, col, isHorizontal, player };
     this.moveHistory.push({ row, col, isHorizontal, player });
     
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
