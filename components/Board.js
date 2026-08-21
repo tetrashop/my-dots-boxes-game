@@ -20,15 +20,24 @@ export default function Board({
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [canvasSize, setCanvasSize] = useState(0);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   const CELL_SIZE = 60;
   const DOT_RADIUS = 6;
   const LINE_WIDTH = 3.5;
+  const PADDING = 50;
+
+  // تشخیص دستگاه لمسی
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
 
   const getCanvasSize = useCallback(() => {
     const size = gridSize;
-    return (size - 1) * CELL_SIZE + 100;
+    return (size - 1) * CELL_SIZE + PADDING * 2;
   }, [gridSize]);
 
   useEffect(() => {
@@ -36,13 +45,26 @@ export default function Board({
     if (!canvas) return;
     const context = canvas.getContext('2d');
     setCtx(context);
+    
+    // تنظیم اندازه مناسب برای دستگاه
+    const containerWidth = containerRef.current?.clientWidth || 500;
+    const baseSize = getCanvasSize();
+    const maxSize = Math.min(containerWidth - 20, 800);
+    const scale = Math.min(1, maxSize / baseSize);
+    const displaySize = baseSize * scale;
+    
+    setCanvasSize(displaySize);
+    canvas.style.width = displaySize + 'px';
+    canvas.style.height = displaySize + 'px';
+    
     drawBoard(context, canvas);
-  }, [game, playerColors, selectedDot, hoverDot, zoom, offset]);
+  }, [game, playerColors, selectedDot, hoverDot, zoom, offset, getCanvasSize]);
 
   const drawBoard = (context, canvas) => {
     const size = getCanvasSize();
-    canvas.width = size * zoom;
-    canvas.height = size * zoom;
+    const scaledSize = size * zoom;
+    canvas.width = scaledSize;
+    canvas.height = scaledSize;
     
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.save();
@@ -51,8 +73,8 @@ export default function Board({
 
     const gridSize = game.gridSize;
     const cellSize = CELL_SIZE;
-    const startX = 50;
-    const startY = 50;
+    const startX = PADDING;
+    const startY = PADDING;
 
     // رسم نقاط
     for (let r = 0; r < gridSize; r++) {
@@ -155,7 +177,7 @@ export default function Board({
           context.strokeRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
           
           context.fillStyle = color;
-          context.font = 'bold 20px sans-serif';
+          context.font = `bold ${cellSize * 0.35}px sans-serif`;
           context.textAlign = 'center';
           context.textBaseline = 'middle';
           context.fillText('✓', x + cellSize/2, y + cellSize/2);
@@ -166,7 +188,6 @@ export default function Board({
     context.restore();
   };
 
-  // تبدیل مختصات
   const getCanvasCoords = (clientX, clientY) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const scaleX = canvasRef.current.width / rect.width;
@@ -180,8 +201,8 @@ export default function Board({
   const findNearestDot = (x, y) => {
     const gridSize = game.gridSize;
     const cellSize = CELL_SIZE;
-    const startX = 50;
-    const startY = 50;
+    const startX = PADDING;
+    const startY = PADDING;
     let minDist = 30;
     let nearest = null;
 
@@ -215,6 +236,11 @@ export default function Board({
   // رویدادهای ماوس
   const handleMouseDown = (e) => {
     if (game.gameOver || game.currentPlayer !== 0) return;
+    if (e.button === 1 || e.shiftKey) {
+      setIsPanning(true);
+      setDragStart({ x: e.clientX, y: e.clientY });
+      return;
+    }
     const coords = getCanvasCoords(e.clientX, e.clientY);
     const dot = findNearestDot(coords.x, coords.y);
     if (dot) {
@@ -224,6 +250,14 @@ export default function Board({
   };
 
   const handleMouseMove = (e) => {
+    if (isPanning) {
+      const dx = (e.clientX - dragStart.x) / zoom;
+      const dy = (e.clientY - dragStart.y) / zoom;
+      setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      setDragStart({ x: e.clientX, y: e.clientY });
+      return;
+    }
+    
     const coords = getCanvasCoords(e.clientX, e.clientY);
     const dot = findNearestDot(coords.x, coords.y);
     setHoverDot(dot);
@@ -234,6 +268,11 @@ export default function Board({
   };
 
   const handleMouseUp = (e) => {
+    if (isPanning) {
+      setIsPanning(false);
+      return;
+    }
+    
     if (!isDragging || !selectedDot) {
       setIsDragging(false);
       setSelectedDot(null);
@@ -263,30 +302,44 @@ export default function Board({
     setHoverDot(null);
   };
 
-  // اسکرول با ماوس
+  // رویدادهای لمسی
+  const handleTouchStart = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (touch) {
+      const mouseEvent = new MouseEvent('mousedown', {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        button: 0
+      });
+      canvasRef.current.dispatchEvent(mouseEvent);
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (touch) {
+      const mouseEvent = new MouseEvent('mousemove', {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+      });
+      canvasRef.current.dispatchEvent(mouseEvent);
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    e.preventDefault();
+    const mouseEvent = new MouseEvent('mouseup', {});
+    canvasRef.current.dispatchEvent(mouseEvent);
+  };
+
   const handleWheel = (e) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     const newZoom = Math.max(0.3, Math.min(3, zoom + delta));
     setZoom(newZoom);
     if (onZoomChange) onZoomChange(newZoom);
-  };
-
-  // درگ برای جابجایی
-  const handlePanStart = (e) => {
-    if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
-      setDragStart({ x: e.clientX, y: e.clientY });
-      setIsDragging(true);
-    }
-  };
-
-  const handlePanMove = (e) => {
-    if (isDragging && (e.button === 1 || e.shiftKey)) {
-      const dx = (e.clientX - dragStart.x) / zoom;
-      const dy = (e.clientY - dragStart.y) / zoom;
-      setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
-      setDragStart({ x: e.clientX, y: e.clientY });
-    }
   };
 
   return (
@@ -296,27 +349,33 @@ export default function Board({
         position: 'relative',
         width: '100%',
         overflow: 'auto',
+        WebkitOverflowScrolling: 'touch',
         border: '2px solid #e2e8f0',
         borderRadius: '12px',
         background: '#f8fafc',
-        minHeight: '400px',
-        maxHeight: '600px'
+        minHeight: '350px',
+        maxHeight: '80vh',
+        touchAction: 'none'
       }}
     >
       <canvas
         ref={canvasRef}
         style={{
           display: 'block',
+          margin: '0 auto',
           cursor: game.gameOver || game.currentPlayer !== 0 ? 'default' : 'pointer',
-          touchAction: 'none'
+          touchAction: 'none',
+          maxWidth: '100%',
+          height: 'auto'
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
-        onMouseDownCapture={handlePanStart}
-        onMouseMoveCapture={handlePanMove}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       />
       
       {/* کنترل‌های زوم */}
@@ -325,26 +384,38 @@ export default function Board({
         bottom: '10px',
         right: '10px',
         display: 'flex',
-        gap: '8px',
-        background: 'white',
-        padding: '8px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        gap: '6px',
+        background: 'rgba(255,255,255,0.95)',
+        padding: '6px',
+        borderRadius: '10px',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)'
       }}>
         <button 
           onClick={() => setZoom(z => Math.max(0.3, z - 0.2))}
           style={{
             padding: '4px 10px',
             border: '1px solid #cbd5e0',
-            borderRadius: '4px',
+            borderRadius: '6px',
             background: 'white',
             cursor: 'pointer',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
+            fontSize: '16px',
+            minWidth: '30px'
           }}
+          aria-label="Zoom out"
         >
           −
         </button>
-        <span style={{ minWidth: '40px', textAlign: 'center', fontSize: '14px' }}>
+        <span style={{ 
+          minWidth: '44px', 
+          textAlign: 'center', 
+          fontSize: '13px',
+          fontWeight: '600',
+          color: '#2d3748',
+          alignSelf: 'center'
+        }}>
           {Math.round(zoom * 100)}%
         </span>
         <button 
@@ -352,11 +423,14 @@ export default function Board({
           style={{
             padding: '4px 10px',
             border: '1px solid #cbd5e0',
-            borderRadius: '4px',
+            borderRadius: '6px',
             background: 'white',
             cursor: 'pointer',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
+            fontSize: '16px',
+            minWidth: '30px'
           }}
+          aria-label="Zoom in"
         >
           +
         </button>
@@ -365,11 +439,12 @@ export default function Board({
           style={{
             padding: '4px 10px',
             border: '1px solid #cbd5e0',
-            borderRadius: '4px',
+            borderRadius: '6px',
             background: '#e2e8f0',
             cursor: 'pointer',
-            fontSize: '12px'
+            fontSize: '14px'
           }}
+          aria-label="Reset zoom"
         >
           ↺
         </button>
@@ -380,14 +455,20 @@ export default function Board({
         position: 'absolute',
         bottom: '10px',
         left: '10px',
-        fontSize: '12px',
+        fontSize: '11px',
         color: '#64748b',
         background: 'rgba(255,255,255,0.9)',
         padding: '4px 10px',
         borderRadius: '6px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
+        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        maxWidth: '60%',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis'
       }}>
-        🖱 کلیک + درگ | 🔄 اسکرول برای زوم | ⇧+درگ برای جابجایی
+        {isTouchDevice ? '👆 لمس و کشیدن' : '🖱 کلیک + درگ | 🔄 اسکرول زوم | ⇧+درگ جابجایی'}
       </div>
     </div>
   );

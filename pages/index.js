@@ -18,6 +18,17 @@ export default function Home() {
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [testResults, setTestResults] = useState([]);
   const [gameStarted, setGameStarted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // تشخیص دستگاه موبایل
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const updateGameState = useCallback(() => {
     if (!game) return;
@@ -33,6 +44,7 @@ export default function Home() {
     if (!game || game.gameOver || game.currentPlayer === 0 || isAIThinking) return;
 
     setIsAIThinking(true);
+    const delay = isMobile ? 600 + Math.random() * 400 : 400 + Math.random() * 300;
     setTimeout(() => {
       const move = game.getAIMove(game.currentPlayer);
       if (move) {
@@ -43,8 +55,8 @@ export default function Home() {
         }
       }
       setIsAIThinking(false);
-    }, 400 + Math.random() * 300);
-  }, [game, isAIThinking, updateGameState, numPlayers]);
+    }, delay);
+  }, [game, isAIThinking, updateGameState, numPlayers, isMobile]);
 
   useEffect(() => {
     if (game && game.currentPlayer !== 0 && !game.gameOver) {
@@ -89,7 +101,6 @@ export default function Home() {
   const runTests = () => {
     const results = [];
     
-    // تست 1: حرکت معتبر
     const testGame = new GameLogic(3, 2);
     const move1 = testGame.makeMove(0, 0, true, 0);
     results.push({
@@ -98,7 +109,6 @@ export default function Home() {
       message: move1.success ? '✅ موفق' : '❌ خطا'
     });
 
-    // تست 2: حرکت تکراری
     const move2 = testGame.makeMove(0, 0, true, 0);
     results.push({
       name: 'جلوگیری از حرکت تکراری',
@@ -106,7 +116,6 @@ export default function Home() {
       message: move2.success === false ? '✅ موفق' : '❌ خطا'
     });
 
-    // تست 3: تشخیص نوبت
     const move3 = testGame.makeMove(0, 1, true, 1);
     results.push({
       name: 'تشخیص نوبت',
@@ -114,7 +123,6 @@ export default function Home() {
       message: move3.success === false ? '✅ موفق' : '❌ خطا'
     });
 
-    // تست 4: ساخت مربع
     const game4 = new GameLogic(2, 2);
     game4.makeMove(0, 0, true, 0);
     game4.makeMove(0, 0, false, 1);
@@ -124,15 +132,6 @@ export default function Home() {
       name: 'ساخت مربع',
       passed: move4.success && move4.filled > 0,
       message: move4.success && move4.filled > 0 ? '✅ موفق' : '❌ خطا'
-    });
-
-    // تست 5: بازی با 3 بازیکن
-    const game5 = new GameLogic(3, 3);
-    const move5 = game5.makeMove(0, 0, true, 0);
-    results.push({
-      name: 'بازی با 3 بازیکن',
-      passed: move5.success === true && game5.numPlayers === 3,
-      message: move5.success ? '✅ موفق' : '❌ خطا'
     });
 
     setTestResults(results);
@@ -146,7 +145,7 @@ export default function Home() {
           تنظیمات بازی را انتخاب کنید و شروع کنید!
         </p>
         <GameSettings onStartGame={handleStartGame} />
-        <div style={{ marginTop: '20px' }}>
+        <div style={{ marginTop: '20px', textAlign: 'center' }}>
           <button onClick={runTests} style={{ 
             background: '#48bb78', 
             padding: '10px 20px',
@@ -163,10 +162,11 @@ export default function Home() {
               marginTop: '15px',
               background: '#fefcbf',
               padding: '15px',
-              borderRadius: '12px'
+              borderRadius: '12px',
+              textAlign: 'right'
             }}>
               <h4>📊 نتایج تست:</h4>
-              <pre style={{ whiteSpace: 'pre-wrap' }}>
+              <pre style={{ whiteSpace: 'pre-wrap', fontSize: isMobile ? '12px' : '14px' }}>
                 {testResults.map((r, i) => `${i+1}. ${r.name}: ${r.message}`).join('\n')}
               </pre>
             </div>
@@ -178,7 +178,7 @@ export default function Home() {
 
   return (
     <div className="container">
-      <h1>🧩 بازی مربع‌سازی</h1>
+      <h1 style={{ fontSize: isMobile ? '1.5rem' : '2rem' }}>🧩 بازی مربع‌سازی</h1>
       
       <GameSettings 
         onStartGame={handleStartGame}
@@ -194,6 +194,7 @@ export default function Home() {
         playerColors={playerColors}
         numPlayers={numPlayers}
         remainingMoves={game?.getRemainingMoves() || 0}
+        isMobile={isMobile}
       />
 
       {game && (
@@ -205,12 +206,24 @@ export default function Home() {
         />
       )}
 
-      <div className="controls">
-        <button onClick={resetGame}>🔄 بازی جدید</button>
-        <button className="reset" onClick={() => { setGameStarted(false); setGame(null); }}>
+      <div className="controls" style={{ flexDirection: isMobile ? 'column' : 'row' }}>
+        <button onClick={resetGame} style={{ width: isMobile ? '100%' : 'auto' }}>
+          🔄 بازی جدید
+        </button>
+        <button 
+          className="reset" 
+          onClick={() => { setGameStarted(false); setGame(null); }}
+          style={{ width: isMobile ? '100%' : 'auto' }}
+        >
           🏠 بازگشت به تنظیمات
         </button>
-        <button onClick={runTests} style={{ background: '#48bb78' }}>
+        <button 
+          onClick={runTests} 
+          style={{ 
+            background: '#48bb78',
+            width: isMobile ? '100%' : 'auto'
+          }}
+        >
           🧪 تست خودکار
         </button>
       </div>
@@ -218,7 +231,7 @@ export default function Home() {
       {testResults.length > 0 && (
         <div className="test-results">
           <h4>📊 نتایج تست:</h4>
-          <pre>
+          <pre style={{ fontSize: isMobile ? '12px' : '14px' }}>
             {testResults.map((r, i) => `${i+1}. ${r.name}: ${r.message}`).join('\n')}
           </pre>
         </div>

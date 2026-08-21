@@ -5,12 +5,13 @@ export default function GameStatus({
   winner,
   playerColors,
   numPlayers,
-  remainingMoves
+  remainingMoves,
+  isMobile = false
 }) {
   const getTurnText = () => {
     if (gameOver) return '🎯 بازی تمام شد!';
     if (currentPlayer === 0) return '👤 نوبت شماست';
-    return `🤖 نوبت بازیکن ${currentPlayer + 1} (هوش مصنوعی)`;
+    return `🤖 نوبت بازیکن ${currentPlayer + 1}`;
   };
 
   const getWinnerText = () => {
@@ -23,7 +24,7 @@ export default function GameStatus({
     <div style={{
       background: '#f8fafc',
       borderRadius: '16px',
-      padding: '15px 20px',
+      padding: isMobile ? '12px 15px' : '15px 20px',
       marginBottom: '20px',
       border: '2px solid #e2e8f0'
     }}>
@@ -32,28 +33,35 @@ export default function GameStatus({
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '10px'
+        gap: isMobile ? '6px' : '10px'
       }}>
-        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+        <div style={{ 
+          display: 'flex', 
+          gap: isMobile ? '6px' : '15px', 
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          width: isMobile ? '100%' : 'auto'
+        }}>
           {scores.map((score, i) => (
             <div key={i} style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '4px',
               fontWeight: '700',
-              padding: '4px 12px',
+              fontSize: isMobile ? '0.8rem' : '1rem',
+              padding: isMobile ? '2px 8px' : '4px 12px',
               borderRadius: '20px',
               background: i === currentPlayer && !gameOver ? '#e2e8f0' : 'transparent',
               border: i === currentPlayer && !gameOver ? '2px solid #4299e1' : 'none'
             }}>
               <span style={{
                 display: 'inline-block',
-                width: '14px',
-                height: '14px',
+                width: isMobile ? '10px' : '14px',
+                height: isMobile ? '10px' : '14px',
                 borderRadius: '4px',
                 background: playerColors[i] || '#000'
               }}></span>
-              بازیکن {i + 1}: {score}
+              {isMobile ? `P${i+1}` : `بازیکن ${i+1}`}: {score}
             </div>
           ))}
         </div>
@@ -61,10 +69,12 @@ export default function GameStatus({
         <div style={{
           background: gameOver ? '#fc8181' : '#4299e1',
           color: 'white',
-          padding: '6px 18px',
+          padding: isMobile ? '4px 12px' : '6px 18px',
           borderRadius: '30px',
           fontWeight: '700',
-          fontSize: '0.9rem'
+          fontSize: isMobile ? '0.75rem' : '0.9rem',
+          width: isMobile ? '100%' : 'auto',
+          textAlign: 'center'
         }}>
           {getTurnText()}
         </div>
@@ -72,8 +82,8 @@ export default function GameStatus({
 
       {remainingMoves !== undefined && !gameOver && (
         <div style={{
-          marginTop: '8px',
-          fontSize: '0.85rem',
+          marginTop: isMobile ? '4px' : '8px',
+          fontSize: isMobile ? '0.7rem' : '0.85rem',
           color: '#4a5568',
           textAlign: 'center'
         }}>
@@ -83,18 +93,23 @@ export default function GameStatus({
 
       {gameOver && (
         <div style={{
-          marginTop: '10px',
-          padding: '10px',
+          marginTop: isMobile ? '8px' : '10px',
+          padding: isMobile ? '8px' : '10px',
           borderRadius: '12px',
           background: '#f0fff4',
           textAlign: 'center',
-          fontSize: '1.2rem',
+          fontSize: isMobile ? '1rem' : '1.2rem',
           fontWeight: '800',
           color: '#22543d'
         }}>
           {getWinnerText()}
-          <div style={{ fontSize: '0.9rem', fontWeight: '400', color: '#4a5568', marginTop: '4px' }}>
-            امتیاز نهایی: {scores.map((s, i) => `بازیکن ${i+1}: ${s}`).join(' | ')}
+          <div style={{ 
+            fontSize: isMobile ? '0.7rem' : '0.9rem', 
+            fontWeight: '400', 
+            color: '#4a5568', 
+            marginTop: '4px' 
+          }}>
+            {scores.map((s, i) => `P${i+1}: ${s}`).join(' | ')}
           </div>
         </div>
       )}
