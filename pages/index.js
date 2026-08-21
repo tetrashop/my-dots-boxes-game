@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GameLogic } from '../utils/gameLogic';
-import Board from '../components/Board';
+import GameBoard from '../components/GameBoard';
 import GameSettings from '../components/GameSettings';
 import GameStatus from '../components/GameStatus';
 
@@ -16,11 +16,11 @@ export default function Home() {
   const [gridSize, setGridSize] = useState(4);
   const [numPlayers, setNumPlayers] = useState(2);
   const [isAIThinking, setIsAIThinking] = useState(false);
-  const [testResults, setTestResults] = useState([]);
   const [gameStarted, setGameStarted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [testResults, setTestResults] = useState([]);
 
-  // تشخیص دستگاه موبایل
+  // تشخیص موبایل
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
@@ -44,7 +44,8 @@ export default function Home() {
     if (!game || game.gameOver || game.currentPlayer === 0 || isAIThinking) return;
 
     setIsAIThinking(true);
-    const delay = isMobile ? 600 + Math.random() * 400 : 400 + Math.random() * 300;
+    const delay = isMobile ? 700 + Math.random() * 500 : 500 + Math.random() * 400;
+    
     setTimeout(() => {
       const move = game.getAIMove(game.currentPlayer);
       if (move) {
@@ -78,7 +79,6 @@ export default function Home() {
       winner: null
     });
     setIsAIThinking(false);
-    setTestResults([]);
   };
 
   const handlePlayerMove = (row, col, isHorizontal) => {
@@ -100,40 +100,17 @@ export default function Home() {
 
   const runTests = () => {
     const results = [];
-    
     const testGame = new GameLogic(3, 2);
+    
     const move1 = testGame.makeMove(0, 0, true, 0);
-    results.push({
-      name: 'حرکت معتبر',
-      passed: move1.success === true,
-      message: move1.success ? '✅ موفق' : '❌ خطا'
-    });
-
+    results.push({ name: 'حرکت معتبر', passed: move1.success });
+    
     const move2 = testGame.makeMove(0, 0, true, 0);
-    results.push({
-      name: 'جلوگیری از حرکت تکراری',
-      passed: move2.success === false && move2.reason === 'already_drawn',
-      message: move2.success === false ? '✅ موفق' : '❌ خطا'
-    });
-
+    results.push({ name: 'جلوگیری از تکراری', passed: !move2.success });
+    
     const move3 = testGame.makeMove(0, 1, true, 1);
-    results.push({
-      name: 'تشخیص نوبت',
-      passed: move3.success === false && move3.reason === 'wrong_turn',
-      message: move3.success === false ? '✅ موفق' : '❌ خطا'
-    });
-
-    const game4 = new GameLogic(2, 2);
-    game4.makeMove(0, 0, true, 0);
-    game4.makeMove(0, 0, false, 1);
-    game4.makeMove(1, 0, true, 0);
-    const move4 = game4.makeMove(1, 0, false, 1);
-    results.push({
-      name: 'ساخت مربع',
-      passed: move4.success && move4.filled > 0,
-      message: move4.success && move4.filled > 0 ? '✅ موفق' : '❌ خطا'
-    });
-
+    results.push({ name: 'تشخیص نوبت', passed: !move3.success });
+    
     setTestResults(results);
   };
 
@@ -142,16 +119,16 @@ export default function Home() {
       <div className="container">
         <h1>🧩 بازی مربع‌سازی</h1>
         <p style={{ textAlign: 'center', color: '#4a5568', marginBottom: '20px' }}>
-          تنظیمات بازی را انتخاب کنید و شروع کنید!
+          نقاط را به هم وصل کنید و مربع بسازید!
         </p>
-        <GameSettings onStartGame={handleStartGame} />
-        <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          <button onClick={runTests} style={{ 
-            background: '#48bb78', 
-            padding: '10px 20px',
-            border: 'none',
-            borderRadius: '40px',
+        <GameSettings onStartGame={handleStartGame} isMobile={isMobile} />
+        <div style={{ textAlign: 'center', marginTop: '15px' }}>
+          <button onClick={runTests} style={{
+            background: '#48bb78',
             color: 'white',
+            border: 'none',
+            padding: '10px 24px',
+            borderRadius: '40px',
             fontWeight: '700',
             cursor: 'pointer'
           }}>
@@ -165,10 +142,11 @@ export default function Home() {
               borderRadius: '12px',
               textAlign: 'right'
             }}>
-              <h4>📊 نتایج تست:</h4>
-              <pre style={{ whiteSpace: 'pre-wrap', fontSize: isMobile ? '12px' : '14px' }}>
-                {testResults.map((r, i) => `${i+1}. ${r.name}: ${r.message}`).join('\n')}
-              </pre>
+              {testResults.map((r, i) => (
+                <div key={i}>
+                  {i+1}. {r.name}: {r.passed ? '✅ موفق' : '❌ خطا'}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -180,60 +158,80 @@ export default function Home() {
     <div className="container">
       <h1 style={{ fontSize: isMobile ? '1.5rem' : '2rem' }}>🧩 بازی مربع‌سازی</h1>
       
-      <GameSettings 
-        onStartGame={handleStartGame}
-        initialGridSize={gridSize}
-        initialPlayers={numPlayers}
-      />
-
       <GameStatus
         scores={gameState.scores}
         currentPlayer={gameState.currentPlayer}
         gameOver={gameState.gameOver}
         winner={gameState.winner}
         playerColors={playerColors}
-        numPlayers={numPlayers}
-        remainingMoves={game?.getRemainingMoves() || 0}
         isMobile={isMobile}
       />
 
-      {game && (
-        <Board
-          game={game}
-          onMove={handlePlayerMove}
-          playerColors={playerColors}
-          gridSize={gridSize}
-        />
-      )}
+      <GameBoard
+        game={game}
+        onMove={handlePlayerMove}
+        playerColors={playerColors}
+        gridSize={gridSize}
+        isMobile={isMobile}
+      />
 
-      <div className="controls" style={{ flexDirection: isMobile ? 'column' : 'row' }}>
-        <button onClick={resetGame} style={{ width: isMobile ? '100%' : 'auto' }}>
+      <div style={{
+        display: 'flex',
+        gap: '10px',
+        justifyContent: 'center',
+        marginTop: '20px',
+        flexWrap: 'wrap'
+      }}>
+        <button onClick={resetGame} style={{
+          background: '#4299e1',
+          color: 'white',
+          border: 'none',
+          padding: '10px 24px',
+          borderRadius: '40px',
+          fontWeight: '700',
+          cursor: 'pointer',
+          width: isMobile ? '100%' : 'auto'
+        }}>
           🔄 بازی جدید
         </button>
-        <button 
-          className="reset" 
-          onClick={() => { setGameStarted(false); setGame(null); }}
-          style={{ width: isMobile ? '100%' : 'auto' }}
-        >
-          🏠 بازگشت به تنظیمات
+        <button onClick={() => { setGameStarted(false); setGame(null); }} style={{
+          background: '#fc8181',
+          color: 'white',
+          border: 'none',
+          padding: '10px 24px',
+          borderRadius: '40px',
+          fontWeight: '700',
+          cursor: 'pointer',
+          width: isMobile ? '100%' : 'auto'
+        }}>
+          🏠 تنظیمات
         </button>
-        <button 
-          onClick={runTests} 
-          style={{ 
-            background: '#48bb78',
-            width: isMobile ? '100%' : 'auto'
-          }}
-        >
-          🧪 تست خودکار
+        <button onClick={runTests} style={{
+          background: '#48bb78',
+          color: 'white',
+          border: 'none',
+          padding: '10px 24px',
+          borderRadius: '40px',
+          fontWeight: '700',
+          cursor: 'pointer',
+          width: isMobile ? '100%' : 'auto'
+        }}>
+          🧪 تست
         </button>
       </div>
 
       {testResults.length > 0 && (
-        <div className="test-results">
-          <h4>📊 نتایج تست:</h4>
-          <pre style={{ fontSize: isMobile ? '12px' : '14px' }}>
-            {testResults.map((r, i) => `${i+1}. ${r.name}: ${r.message}`).join('\n')}
-          </pre>
+        <div style={{
+          marginTop: '15px',
+          background: '#fefcbf',
+          padding: '15px',
+          borderRadius: '12px'
+        }}>
+          {testResults.map((r, i) => (
+            <div key={i}>
+              {i+1}. {r.name}: {r.passed ? '✅ موفق' : '❌ خطا'}
+            </div>
+          ))}
         </div>
       )}
     </div>

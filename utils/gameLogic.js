@@ -14,7 +14,6 @@ export class GameLogic {
     this.currentPlayer = 0;
     this.gameOver = false;
     this.moveHistory = [];
-    this.lastFilledBoxes = [];
     this.totalMoves = 0;
   }
 
@@ -43,7 +42,6 @@ export class GameLogic {
     
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
     const filledCount = filledBoxes.length;
-    this.lastFilledBoxes = filledBoxes;
 
     if (filledCount === 0) {
       this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
@@ -118,7 +116,6 @@ export class GameLogic {
     let bestMoves = [];
     let regularMoves = [];
 
-    // بررسی تمام حرکات ممکن
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size - 1; c++) {
         if (!this.horizontalLines[r][c]) {
@@ -144,13 +141,11 @@ export class GameLogic {
       }
     }
 
-    // اولویت با حرکتی که بیشترین مربع را می‌سازد
     if (bestMoves.length > 0) {
       bestMoves.sort((a, b) => b.priority - a.priority);
       return bestMoves[0];
     }
 
-    // حرکت تصادفی
     if (regularMoves.length === 0) return null;
     return regularMoves[Math.floor(Math.random() * regularMoves.length)];
   }
@@ -192,7 +187,6 @@ export class GameLogic {
       if (col < size) checkBox(row, col);
     }
     
-    // بازگرداندن وضعیت
     this.horizontalLines = backupHorizontal;
     this.verticalLines = backupVertical;
     this.boxes = backupBoxes;

@@ -4,27 +4,22 @@ export default function GameStatus({
   gameOver,
   winner,
   playerColors,
-  numPlayers,
-  remainingMoves,
   isMobile = false
 }) {
-  const getTurnText = () => {
-    if (gameOver) return '🎯 بازی تمام شد!';
-    if (currentPlayer === 0) return '👤 نوبت شماست';
-    return `🤖 نوبت بازیکن ${currentPlayer + 1}`;
-  };
-
-  const getWinnerText = () => {
-    if (winner === -1) return '🤝 بازی مساوی!';
-    if (winner !== null) return `🏆 برنده: بازیکن ${winner + 1}!`;
-    return '';
+  const getStatus = () => {
+    if (gameOver) {
+      if (winner === -1) return '🤝 مساوی!';
+      if (winner !== null) return `🏆 بازیکن ${winner + 1} برنده شد!`;
+      return '🎯 بازی تمام شد!';
+    }
+    return currentPlayer === 0 ? '👤 نوبت شما' : `🤖 نوبت بازیکن ${currentPlayer + 1}`;
   };
 
   return (
     <div style={{
-      background: '#f8fafc',
+      background: '#f7fafc',
       borderRadius: '16px',
-      padding: isMobile ? '12px 15px' : '15px 20px',
+      padding: isMobile ? '12px' : '15px',
       marginBottom: '20px',
       border: '2px solid #e2e8f0'
     }}>
@@ -33,31 +28,24 @@ export default function GameStatus({
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: isMobile ? '6px' : '10px'
+        gap: '8px'
       }}>
-        <div style={{ 
-          display: 'flex', 
-          gap: isMobile ? '6px' : '15px', 
-          flexWrap: 'wrap',
-          justifyContent: 'center',
-          width: isMobile ? '100%' : 'auto'
-        }}>
+        <div style={{ display: 'flex', gap: isMobile ? '8px' : '15px', flexWrap: 'wrap' }}>
           {scores.map((score, i) => (
             <div key={i} style={{
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
               fontWeight: '700',
-              fontSize: isMobile ? '0.8rem' : '1rem',
-              padding: isMobile ? '2px 8px' : '4px 12px',
+              fontSize: isMobile ? '0.85rem' : '1rem',
+              padding: '4px 10px',
               borderRadius: '20px',
-              background: i === currentPlayer && !gameOver ? '#e2e8f0' : 'transparent',
-              border: i === currentPlayer && !gameOver ? '2px solid #4299e1' : 'none'
+              background: i === currentPlayer && !gameOver ? '#e2e8f0' : 'transparent'
             }}>
               <span style={{
                 display: 'inline-block',
-                width: isMobile ? '10px' : '14px',
-                height: isMobile ? '10px' : '14px',
+                width: '12px',
+                height: '12px',
                 borderRadius: '4px',
                 background: playerColors[i] || '#000'
               }}></span>
@@ -69,50 +57,16 @@ export default function GameStatus({
         <div style={{
           background: gameOver ? '#fc8181' : '#4299e1',
           color: 'white',
-          padding: isMobile ? '4px 12px' : '6px 18px',
+          padding: isMobile ? '4px 14px' : '6px 20px',
           borderRadius: '30px',
           fontWeight: '700',
-          fontSize: isMobile ? '0.75rem' : '0.9rem',
-          width: isMobile ? '100%' : 'auto',
-          textAlign: 'center'
+          fontSize: isMobile ? '0.8rem' : '0.95rem',
+          textAlign: 'center',
+          minWidth: isMobile ? '100%' : 'auto'
         }}>
-          {getTurnText()}
+          {getStatus()}
         </div>
       </div>
-
-      {remainingMoves !== undefined && !gameOver && (
-        <div style={{
-          marginTop: isMobile ? '4px' : '8px',
-          fontSize: isMobile ? '0.7rem' : '0.85rem',
-          color: '#4a5568',
-          textAlign: 'center'
-        }}>
-          ⏳ حرکات باقیمانده: {remainingMoves}
-        </div>
-      )}
-
-      {gameOver && (
-        <div style={{
-          marginTop: isMobile ? '8px' : '10px',
-          padding: isMobile ? '8px' : '10px',
-          borderRadius: '12px',
-          background: '#f0fff4',
-          textAlign: 'center',
-          fontSize: isMobile ? '1rem' : '1.2rem',
-          fontWeight: '800',
-          color: '#22543d'
-        }}>
-          {getWinnerText()}
-          <div style={{ 
-            fontSize: isMobile ? '0.7rem' : '0.9rem', 
-            fontWeight: '400', 
-            color: '#4a5568', 
-            marginTop: '4px' 
-          }}>
-            {scores.map((s, i) => `P${i+1}: ${s}`).join(' | ')}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
