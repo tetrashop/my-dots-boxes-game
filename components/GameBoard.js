@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-// پالت رنگ دلنشین
 const COLOR_PALETTE = {
   background: '#f0f4f8',
   dot: '#2d3748',
@@ -10,6 +9,7 @@ const COLOR_PALETTE = {
   shadow: 'rgba(0,0,0,0.08)',
   glowGreen: 'rgba(72, 187, 120, 0.5)',
   glowRed: 'rgba(252, 129, 129, 0.5)',
+  coachGlow: 'rgba(237, 137, 54, 0.7)',
 };
 
 export default function GameBoard({ 
@@ -17,7 +17,8 @@ export default function GameBoard({
   onMove, 
   playerColors,
   gridSize,
-  isMobile = false
+  isMobile = false,
+  suggestedMove = null
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -28,6 +29,16 @@ export default function GameBoard({
   const [startDot, setStartDot] = useState(null);
   const [currentDot, setCurrentDot] = useState(null);
   const [renderKey, setRenderKey] = useState(0);
+  const [blinkState, setBlinkState] = useState(true);
+
+  // افکت چشمک‌زن برای پیشنهاد مربی
+  useEffect(() => {
+    if (!suggestedMove) return;
+    const interval = setInterval(() => {
+      setBlinkState(prev => !prev);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [suggestedMove]);
 
   const getSizes = useCallback(() => {
     const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -45,7 +56,7 @@ export default function GameBoard({
 
   useEffect(() => {
     setRenderKey(prev => prev + 1);
-  }, [game]);
+  }, [game, suggestedMove]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -67,7 +78,7 @@ export default function GameBoard({
     canvas.style.height = displaySize + 'px';
     
     drawBoard(context, dims);
-  }, [game, playerColors, renderKey, calculateDimensions]);
+  }, [game, playerColors, renderKey, calculateDimensions, suggestedMove, blinkState]);
 
   const drawBoard = (context, dims) => {
     if (!game) return;
@@ -78,7 +89,6 @@ export default function GameBoard({
     
     context.clearRect(0, 0, totalSize, totalSize);
     
-    // پس‌زمینه با گرادیان ملایم
     const gradient = context.createRadialGradient(
       totalSize/2, totalSize/2, 0,
       totalSize/2, totalSize/2, totalSize/1.5
@@ -99,7 +109,6 @@ export default function GameBoard({
         const isValidTarget = isStart && isHover && startDot && currentDot && 
                              (Math.abs(startDot.row - currentDot.row) + Math.abs(startDot.col - currentDot.col) === 1);
         
-        // هاله
         if (isStart || isHover) {
           context.shadowColor = isStart ? 'rgba(251, 191, 36, 0.4)' : 'rgba(66, 153, 225, 0.3)';
           context.shadowBlur = 20;
@@ -111,7 +120,6 @@ export default function GameBoard({
           context.shadowBlur = 0;
         }
         
-        // نقطه اصلی با سایه
         context.shadowColor = 'rgba(0,0,0,0.15)';
         context.shadowBlur = 6;
         context.beginPath();
@@ -125,8 +133,7 @@ export default function GameBoard({
       }
     }
 
-    // 2. خطوط رسم‌شده با ضخامت و سایه
-    // افقی
+    // 2. خطوط رسم‌شده
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
         if (game.horizontalLines[r]?.[c]) {
@@ -148,7 +155,6 @@ export default function GameBoard({
       }
     }
 
-    // عمودی
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
         if (game.verticalLines[r]?.[c]) {
@@ -171,7 +177,59 @@ export default function GameBoard({
       }
     }
 
-    // 3. خط موقت (در حال کشیدن) با افکت
+    // 3. خط پیشنهادی مربی (طلایی، چشمک‌زن)
+    if (suggestedMove && blinkState) {
+      const { row, col, isHorizontal } = suggestedMove;
+      if (isHorizontal) {
+        const x1 = padding + col * cellSize;
+        const y1 = padding + row * cellSize;
+        const x2 = padding + (col + 1) * cellSize;
+        context.shadowColor = COLOR_PALETTE.coachGlow;
+        context.shadowBlur = 24;
+        context.beginPath();
+        context.moveTo(x1, y1);
+        context.lineTo(x2, y1);
+        context.strokeStyle = '#ed8936';
+        context.lineWidth = 6;
+        context.lineCap = 'round';
+        context.setLineDash([8, 6]);
+        context.stroke();
+        context.setLineDash([]);
+        context.shadowBlur = 0;
+        // نشانگرهای فلش در دو سر خط
+        context.fillStyle = '#ed8936';
+        context.font = '16px sans-serif';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText('⬅️', x1, y1 - 14);
+        context.fillText('➡️', x2, y1 - 14);
+      } else {
+        const x1 = padding + col * cellSize;
+        const y1 = padding + row * cellSize;
+        const x2 = x1;
+        const y2 = padding + (row + 1) * cellSize;
+        context.shadowColor = COLOR_PALETTE.coachGlow;
+        context.shadowBlur = 24;
+        context.beginPath();
+        context.moveTo(x1, y1);
+        context.lineTo(x2, y2);
+        context.strokeStyle = '#ed8936';
+        context.lineWidth = 6;
+        context.lineCap = 'round';
+        context.setLineDash([8, 6]);
+        context.stroke();
+        context.setLineDash([]);
+        context.shadowBlur = 0;
+        context.fillStyle = '#ed8936';
+        context.font = '16px sans-serif';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText('⬆️', x1 - 16, y1 + (y2-y1)/2);
+        context.fillText('⬇️', x1 + 16, y1 + (y2-y1)/2);
+      }
+    }
+
+    // 4. خط موقت (در حال کشیدن)
     if (isDragging && startDot && currentDot) {
       const x1 = padding + startDot.col * cellSize;
       const y1 = padding + startDot.row * cellSize;
@@ -200,7 +258,7 @@ export default function GameBoard({
       context.shadowBlur = 0;
     }
 
-    // 4. مربع‌های پر شده با انیمیشن سایه
+    // 5. مربع‌های پر شده
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
         if (game.boxes[r]?.[c] && game.boxes[r][c] !== 0) {
@@ -288,7 +346,6 @@ export default function GameBoard({
     }
   };
 
-  // رویدادهای Pointer
   const handlePointerDown = (e) => {
     e.preventDefault();
     if (game.gameOver || game.currentPlayer !== 0) return;
@@ -322,7 +379,6 @@ export default function GameBoard({
     const endDot = findNearestDot(coords.x, coords.y);
     if (endDot && startDot) {
       const line = getLineData(startDot, endDot);
-      // فقط شرط عدم تکرار خط
       if (line && !isLineDrawn(line)) {
         onMove(line.row, line.col, line.isHorizontal);
       }

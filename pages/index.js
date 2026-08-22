@@ -21,6 +21,10 @@ export default function Home() {
   const [testResults, setTestResults] = useState([]);
   const [renderKey, setRenderKey] = useState(0);
 
+  // ===== وضعیت مربی =====
+  const [coachMode, setCoachMode] = useState(false);
+  const [suggestedMove, setSuggestedMove] = useState(null);
+
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
@@ -39,10 +43,20 @@ export default function Home() {
       winner: game.getWinner()
     });
     setRenderKey(prev => prev + 1);
-  }, [game]);
+    
+    // بعد از هر تغییر، اگر مربی فعال است، پیشنهاد را به‌روز کن
+    if (coachMode && !game.gameOver && game.currentPlayer === 0) {
+      const move = game.getAIMove(0);
+      setSuggestedMove(move);
+    } else {
+      setSuggestedMove(null);
+    }
+  }, [game, coachMode]);
 
+  // هوش مصنوعی خودکار (فقط زمانی که مربی خاموش باشد)
   const makeAIMove = useCallback(() => {
     if (!game || game.gameOver || game.currentPlayer === 0 || isAIThinking) return;
+    if (coachMode) return; // در حالت مربی، هوش مصنوعی حرکت نمی‌کند
 
     setIsAIThinking(true);
     const delay = isMobile ? 600 + Math.random() * 400 : 400 + Math.random() * 300;
@@ -58,13 +72,23 @@ export default function Home() {
       }
       setIsAIThinking(false);
     }, delay);
-  }, [game, isAIThinking, updateGameState, isMobile]);
+  }, [game, isAIThinking, updateGameState, isMobile, coachMode]);
 
   useEffect(() => {
-    if (game && game.currentPlayer !== 0 && !game.gameOver) {
+    if (game && game.currentPlayer !== 0 && !game.gameOver && !coachMode) {
       makeAIMove();
     }
-  }, [game, game?.currentPlayer, game?.gameOver, makeAIMove]);
+  }, [game, game?.currentPlayer, game?.gameOver, makeAIMove, coachMode]);
+
+  // به‌روزرسانی پیشنهاد مربی هنگام تغییر نوبت یا فعال شدن مربی
+  useEffect(() => {
+    if (game && coachMode && !game.gameOver && game.currentPlayer === 0) {
+      const move = game.getAIMove(0);
+      setSuggestedMove(move);
+    } else {
+      setSuggestedMove(null);
+    }
+  }, [game, coachMode, game?.currentPlayer, game?.gameOver]);
 
   const handleStartGame = ({ gridSize: size, numPlayers: players, playerColors: colors }) => {
     const newGame = new GameLogic(size, players);
@@ -81,6 +105,7 @@ export default function Home() {
     });
     setIsAIThinking(false);
     setRenderKey(prev => prev + 1);
+    setSuggestedMove(null);
   };
 
   const handlePlayerMove = (row, col, isHorizontal) => {
@@ -88,6 +113,7 @@ export default function Home() {
     const result = game.makeMove(row, col, isHorizontal, 0);
     if (result.success) {
       updateGameState();
+      // پس از حرکت، پیشنهاد جدید محاسبه می‌شود
     }
   };
 
@@ -97,6 +123,20 @@ export default function Home() {
       updateGameState();
       setIsAIThinking(false);
       setRenderKey(prev => prev + 1);
+      setSuggestedMove(null);
+    }
+  };
+
+  const toggleCoach = () => {
+    setCoachMode(prev => !prev);
+    if (!coachMode) {
+      // فعال شدن مربی: بلافاصله پیشنهاد بگیر
+      if (game && !game.gameOver && game.currentPlayer === 0) {
+        const move = game.getAIMove(0);
+        setSuggestedMove(move);
+      }
+    } else {
+      setSuggestedMove(null);
     }
   };
 
@@ -164,6 +204,42 @@ export default function Home() {
         isMobile={isMobile}
       />
 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '16px',
+        marginBottom: '16px',
+        flexWrap: 'wrap'
+      }}>
+        <button
+          onClick={toggleCoach}
+          style={{
+            background: coachMode ? '#ed8936' : '#a0aec0',
+            boxShadow: coachMode ? '0 4px 16px rgba(237, 137, 54, 0.4)' : '0 2px 8px rgba(0,0,0,0.1)',
+            transition: 'all 0.3s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          {coachMode ? '🧑‍🏫 مربی: فعال' : '🧑‍🏫 مربی: غیرفعال'}
+        </button>
+        {coachMode && suggestedMove && (
+          <span style={{
+            background: '#f6ad55',
+            color: '#1a202c',
+            padding: '6px 16px',
+            borderRadius: '30px',
+            fontSize: '0.9rem',
+            fontWeight: '600',
+            boxShadow: '0 2px 12px rgba(246, 173, 85, 0.3)'
+          }}>
+            ⭐ پیشنهاد: روی خط زرد رنگ کلیک کنید
+          </span>
+        )}
+      </div>
+
       <GameBoard
         key={renderKey}
         game={game}
@@ -171,6 +247,7 @@ export default function Home() {
         playerColors={playerColors}
         gridSize={gridSize}
         isMobile={isMobile}
+        suggestedMove={coachMode ? suggestedMove : null}
       />
 
       <div style={{
