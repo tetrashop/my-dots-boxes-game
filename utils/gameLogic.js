@@ -52,7 +52,7 @@ export class GameLogic {
     return {
       success: true,
       filled: filledCount,
-      filledBoxes: filledBoxes,
+      filledBoxes,
       gameOver: this.gameOver,
       scores: [...this.scores],
       currentPlayer: this.currentPlayer

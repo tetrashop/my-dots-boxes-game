@@ -9,6 +9,7 @@ body {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
   padding: 10px;
+  touch-action: manipulation;
 }
 
 .container {
@@ -29,6 +30,7 @@ h1 {
 button {
   transition: all 0.3s ease;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button:hover {

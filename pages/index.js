@@ -23,7 +23,7 @@ export default function Home() {
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -45,7 +45,7 @@ export default function Home() {
     if (!game || game.gameOver || game.currentPlayer === 0 || isAIThinking) return;
 
     setIsAIThinking(true);
-    const delay = isMobile ? 700 + Math.random() * 500 : 500 + Math.random() * 400;
+    const delay = isMobile ? 600 + Math.random() * 400 : 400 + Math.random() * 300;
     
     setTimeout(() => {
       const move = game.getAIMove(game.currentPlayer);
@@ -85,11 +85,8 @@ export default function Home() {
 
   const handlePlayerMove = (row, col, isHorizontal) => {
     if (!game || game.gameOver || game.currentPlayer !== 0 || isAIThinking) return;
-
     const result = game.makeMove(row, col, isHorizontal, 0);
-    if (result.success) {
-      updateGameState();
-    }
+    if (result.success) updateGameState();
   };
 
   const resetGame = () => {
@@ -104,16 +101,12 @@ export default function Home() {
   const runTests = () => {
     const results = [];
     const testGame = new GameLogic(3, 2);
-    
     const move1 = testGame.makeMove(0, 0, true, 0);
     results.push({ name: 'حرکت معتبر', passed: move1.success });
-    
     const move2 = testGame.makeMove(0, 0, true, 0);
     results.push({ name: 'جلوگیری از تکراری', passed: !move2.success });
-    
     const move3 = testGame.makeMove(0, 1, true, 1);
     results.push({ name: 'تشخیص نوبت', passed: !move3.success });
-    
     setTestResults(results);
   };
 
@@ -146,9 +139,7 @@ export default function Home() {
               textAlign: 'right'
             }}>
               {testResults.map((r, i) => (
-                <div key={i}>
-                  {i+1}. {r.name}: {r.passed ? '✅ موفق' : '❌ خطا'}
-                </div>
+                <div key={i}>{i+1}. {r.name}: {r.passed ? '✅ موفق' : '❌ خطا'}</div>
               ))}
             </div>
           )}
@@ -232,9 +223,7 @@ export default function Home() {
           borderRadius: '12px'
         }}>
           {testResults.map((r, i) => (
-            <div key={i}>
-              {i+1}. {r.name}: {r.passed ? '✅ موفق' : '❌ خطا'}
-            </div>
+            <div key={i}>{i+1}. {r.name}: {r.passed ? '✅ موفق' : '❌ خطا'}</div>
           ))}
         </div>
       )}
