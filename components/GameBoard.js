@@ -12,13 +12,11 @@ export default function GameBoard({
   const [ctx, setCtx] = useState(null);
   const [dimensions, setDimensions] = useState({ cellSize: 50, padding: 40, totalSize: 0 });
   
-  // وضعیت کشیدن
   const [isDragging, setIsDragging] = useState(false);
   const [startDot, setStartDot] = useState(null);
   const [currentDot, setCurrentDot] = useState(null);
   const [renderKey, setRenderKey] = useState(0);
 
-  // تنظیمات اندازه بر اساس دستگاه
   const getSizes = useCallback(() => {
     const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     const baseCell = isMobile ? 38 : 50;
@@ -81,7 +79,6 @@ export default function GameBoard({
         const isValidTarget = isStart && isHover && startDot && currentDot && 
                              (Math.abs(startDot.row - currentDot.row) + Math.abs(startDot.col - currentDot.col) === 1);
         
-        // هاله
         if (isStart || isHover) {
           context.beginPath();
           context.arc(x, y, dotRadius * 2.8, 0, 2 * Math.PI);
@@ -90,7 +87,6 @@ export default function GameBoard({
           context.fill();
         }
         
-        // نقطه اصلی
         context.beginPath();
         context.arc(x, y, isStart ? dotRadius * 1.8 : dotRadius, 0, 2 * Math.PI);
         context.fillStyle = isStart ? '#fbbf24' : '#2d3748';
@@ -194,7 +190,6 @@ export default function GameBoard({
     }
   };
 
-  // ---- تبدیل مختصات ----
   const getCanvasCoords = (clientX, clientY) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -251,7 +246,7 @@ export default function GameBoard({
     }
   };
 
-  // ---- رویدادهای ماوس ----
+  // ---- رویدادهای Pointer (ماوس + لمس) ----
   const handlePointerDown = (e) => {
     e.preventDefault();
     if (game.gameOver || game.currentPlayer !== 0) return;
@@ -285,6 +280,7 @@ export default function GameBoard({
     const endDot = findNearestDot(coords.x, coords.y);
     if (endDot && startDot) {
       const line = getLineData(startDot, endDot);
+      // فقط بررسی می‌کنیم که خط قبلاً رسم نشده باشد (نقطه شروع می‌تواند دارای یال باشد)
       if (line && !isLineDrawn(line)) {
         onMove(line.row, line.col, line.isHorizontal);
       }
@@ -295,10 +291,6 @@ export default function GameBoard({
   const handlePointerLeave = () => {
     if (isDragging) resetDragState();
   };
-
-  // ---- رویدادهای لمسی (با استفاده از Pointer Events) ----
-  // Pointer Events به طور خودکار هم ماوس و هم لمس را پشتیبانی می‌کنند
-  // بنابراین نیازی به رویدادهای جداگانه Touch نیست
 
   const resetDragState = () => {
     setIsDragging(false);

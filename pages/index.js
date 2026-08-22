@@ -52,13 +52,14 @@ export default function Home() {
       if (move) {
         const result = game.makeMove(move.row, move.col, move.isHorizontal, game.currentPlayer);
         updateGameState();
-        if (!result.gameOver && game.currentPlayer !== 0 && game.currentPlayer < numPlayers) {
+        // چون نوبت عوض می‌شود، اگر بازیکن بعدی هم AI باشد، دوباره صدا می‌زنیم
+        if (!result.gameOver && game.currentPlayer !== 0) {
           makeAIMove();
         }
       }
       setIsAIThinking(false);
     }, delay);
-  }, [game, isAIThinking, updateGameState, numPlayers, isMobile]);
+  }, [game, isAIThinking, updateGameState, isMobile]);
 
   useEffect(() => {
     if (game && game.currentPlayer !== 0 && !game.gameOver) {
@@ -86,7 +87,10 @@ export default function Home() {
   const handlePlayerMove = (row, col, isHorizontal) => {
     if (!game || game.gameOver || game.currentPlayer !== 0 || isAIThinking) return;
     const result = game.makeMove(row, col, isHorizontal, 0);
-    if (result.success) updateGameState();
+    if (result.success) {
+      updateGameState();
+      // اگر نوبت به AI رسید، useEffect آن را مدیریت می‌کند
+    }
   };
 
   const resetGame = () => {
@@ -107,6 +111,13 @@ export default function Home() {
     results.push({ name: 'جلوگیری از تکراری', passed: !move2.success });
     const move3 = testGame.makeMove(0, 1, true, 1);
     results.push({ name: 'تشخیص نوبت', passed: !move3.success });
+    // تست نوبت‌گیری بعد از حرکت (حتی با مربع)
+    const game4 = new GameLogic(2, 2);
+    game4.makeMove(0, 0, true, 0);
+    game4.makeMove(0, 0, false, 1);
+    game4.makeMove(1, 0, true, 0);
+    const move4 = game4.makeMove(1, 0, false, 1);
+    results.push({ name: 'نوبت بعد از مربع', passed: game4.currentPlayer === 0 });
     setTestResults(results);
   };
 

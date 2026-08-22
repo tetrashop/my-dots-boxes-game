@@ -23,6 +23,7 @@ export class GameLogic {
 
     const size = this.gridSize - 1;
     
+    // بررسی اعتبار موقعیت
     if (isHorizontal) {
       if (row < 0 || row >= size || col < 0 || col >= size - 1)
         return { success: false, reason: 'invalid_position' };
@@ -40,12 +41,12 @@ export class GameLogic {
     this.totalMoves++;
     this.moveHistory.push({ row, col, isHorizontal, player });
     
+    // بررسی مربع‌های ساخته شده (امتیازدهی)
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
     const filledCount = filledBoxes.length;
 
-    if (filledCount === 0) {
-      this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
-    }
+    // تغییر نوبت به بازیکن بعدی (حتی اگر مربع ساخته شده باشد)
+    this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
 
     this.gameOver = this.checkGameOver();
 
@@ -116,6 +117,7 @@ export class GameLogic {
     let bestMoves = [];
     let regularMoves = [];
 
+    // بررسی خطوط افقی
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size - 1; c++) {
         if (!this.horizontalLines[r][c]) {
@@ -128,6 +130,7 @@ export class GameLogic {
         }
       }
     }
+    // بررسی خطوط عمودی
     for (let r = 0; r < size - 1; r++) {
       for (let c = 0; c < size; c++) {
         if (!this.verticalLines[r][c]) {
@@ -141,6 +144,7 @@ export class GameLogic {
       }
     }
 
+    // اولویت با حرکتی که بیشترین مربع را می‌سازد
     if (bestMoves.length > 0) {
       bestMoves.sort((a, b) => b.priority - a.priority);
       return bestMoves[0];
