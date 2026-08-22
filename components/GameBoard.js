@@ -280,7 +280,7 @@ export default function GameBoard({
     const endDot = findNearestDot(coords.x, coords.y);
     if (endDot && startDot) {
       const line = getLineData(startDot, endDot);
-      // فقط بررسی می‌کنیم که خط قبلاً رسم نشده باشد (نقطه شروع می‌تواند دارای یال باشد)
+      // شرط اصلی: فقط بررسی می‌کنیم که این خط قبلاً رسم نشده باشد
       if (line && !isLineDrawn(line)) {
         onMove(line.row, line.col, line.isHorizontal);
       }
@@ -357,8 +357,8 @@ export default function GameBoard({
           zIndex: 10
         }}>
           {startDot && currentDot && isValidLine(startDot, currentDot) 
-            ? '✅ رها کنید تا خط رسم شود' 
-            : '📍 به نقطه مجاور بروید'}
+            ? '✅ رها کنید تا خط رسم شود (در صورت عدم تکرار)' 
+            : '📍 به نقطه مجاور بروید (هیچ محدودیتی برای نقطه شروع نیست)'}
         </div>
       )}
       
