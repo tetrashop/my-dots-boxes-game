@@ -52,7 +52,6 @@ export default function Home() {
       if (move) {
         const result = game.makeMove(move.row, move.col, move.isHorizontal, game.currentPlayer);
         updateGameState();
-        // چون نوبت عوض می‌شود، اگر بازیکن بعدی هم AI باشد، دوباره صدا می‌زنیم
         if (!result.gameOver && game.currentPlayer !== 0) {
           makeAIMove();
         }
@@ -89,7 +88,6 @@ export default function Home() {
     const result = game.makeMove(row, col, isHorizontal, 0);
     if (result.success) {
       updateGameState();
-      // اگر نوبت به AI رسید، useEffect آن را مدیریت می‌کند
     }
   };
 
@@ -111,7 +109,6 @@ export default function Home() {
     results.push({ name: 'جلوگیری از تکراری', passed: !move2.success });
     const move3 = testGame.makeMove(0, 1, true, 1);
     results.push({ name: 'تشخیص نوبت', passed: !move3.success });
-    // تست نوبت‌گیری بعد از حرکت (حتی با مربع)
     const game4 = new GameLogic(2, 2);
     game4.makeMove(0, 0, true, 0);
     game4.makeMove(0, 0, false, 1);
@@ -132,12 +129,7 @@ export default function Home() {
         <div style={{ textAlign: 'center', marginTop: '15px' }}>
           <button onClick={runTests} style={{
             background: '#48bb78',
-            color: 'white',
-            border: 'none',
-            padding: '10px 24px',
-            borderRadius: '40px',
-            fontWeight: '700',
-            cursor: 'pointer'
+            boxShadow: '0 4px 12px rgba(72, 187, 120, 0.3)'
           }}>
             🧪 تست خودکار
           </button>
@@ -183,44 +175,18 @@ export default function Home() {
 
       <div style={{
         display: 'flex',
-        gap: '10px',
+        gap: '12px',
         justifyContent: 'center',
         marginTop: '20px',
         flexWrap: 'wrap'
       }}>
-        <button onClick={resetGame} style={{
-          background: '#4299e1',
-          color: 'white',
-          border: 'none',
-          padding: '10px 24px',
-          borderRadius: '40px',
-          fontWeight: '700',
-          cursor: 'pointer',
-          width: isMobile ? '100%' : 'auto'
-        }}>
-          🔄 بازی جدید
-        </button>
-        <button onClick={() => { setGameStarted(false); setGame(null); }} style={{
-          background: '#fc8181',
-          color: 'white',
-          border: 'none',
-          padding: '10px 24px',
-          borderRadius: '40px',
-          fontWeight: '700',
-          cursor: 'pointer',
-          width: isMobile ? '100%' : 'auto'
-        }}>
+        <button onClick={resetGame}>🔄 بازی جدید</button>
+        <button className="reset" onClick={() => { setGameStarted(false); setGame(null); }}>
           🏠 تنظیمات
         </button>
         <button onClick={runTests} style={{
           background: '#48bb78',
-          color: 'white',
-          border: 'none',
-          padding: '10px 24px',
-          borderRadius: '40px',
-          fontWeight: '700',
-          cursor: 'pointer',
-          width: isMobile ? '100%' : 'auto'
+          boxShadow: '0 4px 12px rgba(72, 187, 120, 0.3)'
         }}>
           🧪 تست
         </button>

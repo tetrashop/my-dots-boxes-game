@@ -1,5 +1,17 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
+// پالت رنگ دلنشین
+const COLOR_PALETTE = {
+  background: '#f0f4f8',
+  dot: '#2d3748',
+  dotHover: '#63b3ed',
+  dotSelected: '#f6ad55',
+  lineDefault: '#a0aec0',
+  shadow: 'rgba(0,0,0,0.08)',
+  glowGreen: 'rgba(72, 187, 120, 0.5)',
+  glowRed: 'rgba(252, 129, 129, 0.5)',
+};
+
 export default function GameBoard({ 
   game, 
   onMove, 
@@ -65,7 +77,15 @@ export default function GameBoard({
     const gridSize = game.gridSize;
     
     context.clearRect(0, 0, totalSize, totalSize);
-    context.fillStyle = '#f8fafc';
+    
+    // پس‌زمینه با گرادیان ملایم
+    const gradient = context.createRadialGradient(
+      totalSize/2, totalSize/2, 0,
+      totalSize/2, totalSize/2, totalSize/1.5
+    );
+    gradient.addColorStop(0, '#ffffff');
+    gradient.addColorStop(1, COLOR_PALETTE.background);
+    context.fillStyle = gradient;
     context.fillRect(0, 0, totalSize, totalSize);
     
     // 1. نقاط
@@ -79,25 +99,34 @@ export default function GameBoard({
         const isValidTarget = isStart && isHover && startDot && currentDot && 
                              (Math.abs(startDot.row - currentDot.row) + Math.abs(startDot.col - currentDot.col) === 1);
         
+        // هاله
         if (isStart || isHover) {
+          context.shadowColor = isStart ? 'rgba(251, 191, 36, 0.4)' : 'rgba(66, 153, 225, 0.3)';
+          context.shadowBlur = 20;
           context.beginPath();
           context.arc(x, y, dotRadius * 2.8, 0, 2 * Math.PI);
-          context.fillStyle = isStart ? 'rgba(251, 191, 36, 0.4)' : 
-                             (isValidTarget ? 'rgba(72, 187, 120, 0.4)' : 'rgba(66, 153, 225, 0.2)');
+          context.fillStyle = isStart ? 'rgba(251, 191, 36, 0.25)' : 
+                             (isValidTarget ? 'rgba(72, 187, 120, 0.25)' : 'rgba(66, 153, 225, 0.15)');
           context.fill();
+          context.shadowBlur = 0;
         }
         
+        // نقطه اصلی با سایه
+        context.shadowColor = 'rgba(0,0,0,0.15)';
+        context.shadowBlur = 6;
         context.beginPath();
         context.arc(x, y, isStart ? dotRadius * 1.8 : dotRadius, 0, 2 * Math.PI);
-        context.fillStyle = isStart ? '#fbbf24' : '#2d3748';
+        context.fillStyle = isStart ? '#f6ad55' : COLOR_PALETTE.dot;
         context.fill();
-        context.strokeStyle = '#1a202c';
+        context.shadowBlur = 0;
+        context.strokeStyle = '#ffffff';
         context.lineWidth = 1.5;
         context.stroke();
       }
     }
 
-    // 2. خطوط رسم‌شده (افقی)
+    // 2. خطوط رسم‌شده با ضخامت و سایه
+    // افقی
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
         if (game.horizontalLines[r]?.[c]) {
@@ -105,20 +134,21 @@ export default function GameBoard({
           const y1 = padding + r * cellSize;
           const x2 = padding + (c + 1) * cellSize;
           let player = game.boxes[r]?.[c] || game.boxes[r+1]?.[c] || 0;
+          context.shadowColor = 'rgba(0,0,0,0.12)';
+          context.shadowBlur = 6;
           context.beginPath();
           context.moveTo(x1, y1);
           context.lineTo(x2, y1);
-          context.strokeStyle = player ? playerColors[player - 1] : '#94a3b8';
+          context.strokeStyle = player ? playerColors[player - 1] : COLOR_PALETTE.lineDefault;
           context.lineWidth = 4;
-          context.shadowColor = 'rgba(0,0,0,0.08)';
-          context.shadowBlur = 4;
+          context.lineCap = 'round';
           context.stroke();
           context.shadowBlur = 0;
         }
       }
     }
 
-    // 3. خطوط رسم‌شده (عمودی)
+    // عمودی
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
         if (game.verticalLines[r]?.[c]) {
@@ -127,20 +157,21 @@ export default function GameBoard({
           const x2 = x1;
           const y2 = padding + (r + 1) * cellSize;
           let player = game.boxes[r]?.[c] || game.boxes[r]?.[c+1] || 0;
+          context.shadowColor = 'rgba(0,0,0,0.12)';
+          context.shadowBlur = 6;
           context.beginPath();
           context.moveTo(x1, y1);
           context.lineTo(x2, y2);
-          context.strokeStyle = player ? playerColors[player - 1] : '#94a3b8';
+          context.strokeStyle = player ? playerColors[player - 1] : COLOR_PALETTE.lineDefault;
           context.lineWidth = 4;
-          context.shadowColor = 'rgba(0,0,0,0.08)';
-          context.shadowBlur = 4;
+          context.lineCap = 'round';
           context.stroke();
           context.shadowBlur = 0;
         }
       }
     }
 
-    // 4. خط موقت (در حال کشیدن)
+    // 3. خط موقت (در حال کشیدن) با افکت
     if (isDragging && startDot && currentDot) {
       const x1 = padding + startDot.col * cellSize;
       const y1 = padding + startDot.row * cellSize;
@@ -150,46 +181,57 @@ export default function GameBoard({
       const isAdjacent = (Math.abs(startDot.row - currentDot.row) + Math.abs(startDot.col - currentDot.col) === 1);
       const isValid = isAdjacent && (startDot.row === currentDot.row || startDot.col === currentDot.col);
       
+      context.shadowColor = isValid ? COLOR_PALETTE.glowGreen : COLOR_PALETTE.glowRed;
+      context.shadowBlur = 20;
       context.beginPath();
       context.moveTo(x1, y1);
       context.lineTo(x2, y2);
       if (isValid) {
         context.strokeStyle = '#48bb78';
         context.lineWidth = 4;
-        context.shadowColor = 'rgba(72, 187, 120, 0.5)';
-        context.shadowBlur = 12;
       } else {
         context.strokeStyle = '#fc8181';
         context.lineWidth = 2;
         context.setLineDash([6, 6]);
       }
+      context.lineCap = 'round';
       context.stroke();
       context.setLineDash([]);
       context.shadowBlur = 0;
     }
 
-    // 5. مربع‌های پر شده
+    // 4. مربع‌های پر شده با انیمیشن سایه
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
         if (game.boxes[r]?.[c] && game.boxes[r][c] !== 0) {
           const x = padding + c * cellSize;
           const y = padding + r * cellSize;
           const color = playerColors[game.boxes[r][c] - 1];
-          context.fillStyle = color + '30';
+          
+          context.shadowColor = color + '40';
+          context.shadowBlur = 12;
+          context.fillStyle = color + '25';
           context.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+          
+          context.shadowBlur = 0;
           context.strokeStyle = color;
           context.lineWidth = 2.5;
           context.strokeRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+          
           context.fillStyle = color;
-          context.font = `bold ${cellSize * 0.4}px sans-serif`;
+          context.font = `bold ${cellSize * 0.4}px "Segoe UI", sans-serif`;
           context.textAlign = 'center';
           context.textBaseline = 'middle';
+          context.shadowColor = 'rgba(0,0,0,0.1)';
+          context.shadowBlur = 4;
           context.fillText('✓', x + cellSize/2, y + cellSize/2);
+          context.shadowBlur = 0;
         }
       }
     }
   };
 
+  // توابع کمکی (بدون تغییر)
   const getCanvasCoords = (clientX, clientY) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -246,7 +288,7 @@ export default function GameBoard({
     }
   };
 
-  // ---- رویدادهای Pointer (ماوس + لمس) ----
+  // رویدادهای Pointer
   const handlePointerDown = (e) => {
     e.preventDefault();
     if (game.gameOver || game.currentPlayer !== 0) return;
@@ -280,7 +322,7 @@ export default function GameBoard({
     const endDot = findNearestDot(coords.x, coords.y);
     if (endDot && startDot) {
       const line = getLineData(startDot, endDot);
-      // شرط اصلی: فقط بررسی می‌کنیم که این خط قبلاً رسم نشده باشد
+      // فقط شرط عدم تکرار خط
       if (line && !isLineDrawn(line)) {
         onMove(line.row, line.col, line.isHorizontal);
       }
@@ -311,13 +353,14 @@ export default function GameBoard({
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        background: '#f8fafc',
-        borderRadius: '12px',
+        background: '#e2e8f0',
+        borderRadius: '16px',
         padding: '8px',
         touchAction: 'none',
         minHeight: '280px',
         userSelect: 'none',
-        WebkitUserSelect: 'none'
+        WebkitUserSelect: 'none',
+        boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.06)'
       }}
     >
       <canvas
@@ -328,9 +371,9 @@ export default function GameBoard({
           height: 'auto',
           cursor: (game.gameOver || game.currentPlayer !== 0) ? 'default' : 'pointer',
           touchAction: 'none',
-          borderRadius: '8px',
+          borderRadius: '12px',
           background: 'white',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+          boxShadow: '0 4px 16px rgba(0,0,0,0.08)'
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -342,23 +385,24 @@ export default function GameBoard({
       {isDragging && (
         <div style={{
           position: 'absolute',
-          top: '8px',
+          top: '12px',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'rgba(0,0,0,0.7)',
+          background: 'rgba(0,0,0,0.75)',
           color: 'white',
-          padding: '4px 16px',
-          borderRadius: '20px',
-          fontSize: '12px',
+          padding: '6px 20px',
+          borderRadius: '30px',
+          fontSize: '13px',
           fontWeight: '600',
           backdropFilter: 'blur(8px)',
           pointerEvents: 'none',
           whiteSpace: 'nowrap',
-          zIndex: 10
+          zIndex: 10,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
         }}>
           {startDot && currentDot && isValidLine(startDot, currentDot) 
-            ? '✅ رها کنید تا خط رسم شود (در صورت عدم تکرار)' 
-            : '📍 به نقطه مجاور بروید (هیچ محدودیتی برای نقطه شروع نیست)'}
+            ? '✅ رها کنید تا خط رسم شود' 
+            : '📍 به نقطه مجاور بروید (نقطه شروع آزاد)'}
         </div>
       )}
       
@@ -370,17 +414,18 @@ export default function GameBoard({
           transform: 'translate(-50%, -50%)',
           background: 'rgba(0,0,0,0.8)',
           color: 'white',
-          padding: '16px 24px',
-          borderRadius: '16px',
-          fontSize: isMobile ? '1.1rem' : '1.4rem',
+          padding: '20px 32px',
+          borderRadius: '20px',
+          fontSize: isMobile ? '1.2rem' : '1.6rem',
           fontWeight: 'bold',
           textAlign: 'center',
-          backdropFilter: 'blur(10px)',
+          backdropFilter: 'blur(12px)',
           pointerEvents: 'none',
-          zIndex: 10
+          zIndex: 10,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
         }}>
           🎯 بازی تمام شد!
-          <div style={{ fontSize: '0.8rem', marginTop: '6px', opacity: 0.8 }}>
+          <div style={{ fontSize: '0.9rem', marginTop: '8px', opacity: 0.9 }}>
             {game.getWinner() !== null && game.getWinner() !== -1 
               ? `🏆 بازیکن ${game.getWinner() + 1} برنده شد!` 
               : game.getWinner() === -1 ? '🤝 مساوی!' : ''}
