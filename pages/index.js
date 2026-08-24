@@ -55,12 +55,14 @@ export default function Home() {
 
     setIsAIThinking(true);
     const delay = isMobile ? 600 + Math.random() * 400 : 400 + Math.random() * 300;
+    
     setTimeout(() => {
       const move = game.getAIMove(game.currentPlayer);
       if (move) {
         const result = game.makeMove(move.row, move.col, move.isHorizontal, game.currentPlayer);
         updateGameState();
-        if (!result.gameOver && game.currentPlayer !== 0) {
+        // اگر بازیکن AI دوباره نوبت گرفت (مربع ساخت)، دوباره حرکت کن
+        if (!result.gameOver && game.currentPlayer !== 0 && !coachMode) {
           makeAIMove();
         }
       }
@@ -134,7 +136,10 @@ export default function Home() {
   const handlePlayerMove = (row, col, isHorizontal) => {
     if (!game || game.gameOver || game.currentPlayer !== 0 || isAIThinking) return;
     const result = game.makeMove(row, col, isHorizontal, 0);
-    if (result.success) updateGameState();
+    if (result.success) {
+      updateGameState();
+      // اگر بازیکن دوباره نوبت گرفت (مربع ساخت)، منتظر حرکت بعدی هستیم
+    }
   };
 
   const resetGame = () => {
