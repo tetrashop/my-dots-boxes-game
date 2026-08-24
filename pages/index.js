@@ -3,8 +3,13 @@ import { GameLogic } from '../utils/gameLogic';
 import GameBoard from '../components/GameBoard';
 import GameSettings from '../components/GameSettings';
 import GameStatus from '../components/GameStatus';
+import AuthModal from '../components/AuthModal';
+import Dashboard from '../components/Dashboard';
+import Leaderboard from '../components/Leaderboard';
+import { auth } from '../utils/auth';
 
 export default function Home() {
+  const [user, setUser] = useState(null);
   const [game, setGame] = useState(null);
   const [gameState, setGameState] = useState({
     scores: [],
@@ -18,12 +23,11 @@ export default function Home() {
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [testResults, setTestResults] = useState([]);
   const [renderKey, setRenderKey] = useState(0);
-
-  // ===== وضعیت مربی =====
+  const [showAuth, setShowAuth] = useState(true);
   const [coachMode, setCoachMode] = useState(false);
   const [suggestedMove, setSuggestedMove] = useState(null);
+  const [gameResult, setGameResult] = useState(null);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -44,7 +48,6 @@ export default function Home() {
     });
     setRenderKey(prev => prev + 1);
     
-    // بعد از هر تغییر، اگر مربی فعال است، پیشنهاد را به‌روز کن
     if (coachMode && !game.gameOver && game.currentPlayer === 0) {
       const move = game.getAIMove(0);
       setSuggestedMove(move);
@@ -53,10 +56,9 @@ export default function Home() {
     }
   }, [game, coachMode]);
 
-  // هوش مصنوعی خودکار (فقط زمانی که مربی خاموش باشد)
   const makeAIMove = useCallback(() => {
     if (!game || game.gameOver || game.currentPlayer === 0 || isAIThinking) return;
-    if (coachMode) return; // در حالت مربی، هوش مصنوعی حرکت نمی‌کند
+    if (coachMode) return;
 
     setIsAIThinking(true);
     const delay = isMobile ? 600 + Math.random() * 400 : 400 + Math.random() * 300;
@@ -80,7 +82,6 @@ export default function Home() {
     }
   }, [game, game?.currentPlayer, game?.gameOver, makeAIMove, coachMode]);
 
-  // به‌روزرسانی پیشنهاد مربی هنگام تغییر نوبت یا فعال شدن مربی
   useEffect(() => {
     if (game && coachMode && !game.gameOver && game.currentPlayer === 0) {
       const move = game.getAIMove(0);
@@ -90,7 +91,20 @@ export default function Home() {
     }
   }, [game, coachMode, game?.currentPlayer, game?.gameOver]);
 
+  const handleLogin = (loggedUser) => {
+    setUser(loggedUser);
+    setShowAuth(false);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setShowAuth(true);
+    setGameStarted(false);
+    setGame(null);
+  };
+
   const handleStartGame = ({ gridSize: size, numPlayers: players, playerColors: colors }) => {
+    if (!user) return;
     const newGame = new GameLogic(size, players);
     setGame(newGame);
     setPlayerColors(colors);
@@ -106,6 +120,7 @@ export default function Home() {
     setIsAIThinking(false);
     setRenderKey(prev => prev + 1);
     setSuggestedMove(null);
+    setGameResult(null);
   };
 
   const handlePlayerMove = (row, col, isHorizontal) => {
@@ -113,7 +128,6 @@ export default function Home() {
     const result = game.makeMove(row, col, isHorizontal, 0);
     if (result.success) {
       updateGameState();
-      // پس از حرکت، پیشنهاد جدید محاسبه می‌شود
     }
   };
 
@@ -124,13 +138,13 @@ export default function Home() {
       setIsAIThinking(false);
       setRenderKey(prev => prev + 1);
       setSuggestedMove(null);
+      setGameResult(null);
     }
   };
 
   const toggleCoach = () => {
     setCoachMode(prev => !prev);
     if (!coachMode) {
-      // فعال شدن مربی: بلافاصله پیشنهاد بگیر
       if (game && !game.gameOver && game.currentPlayer === 0) {
         const move = game.getAIMove(0);
         setSuggestedMove(move);
@@ -140,53 +154,50 @@ export default function Home() {
     }
   };
 
-  const runTests = () => {
-    const results = [];
-    const testGame = new GameLogic(3, 2);
-    const move1 = testGame.makeMove(0, 0, true, 0);
-    results.push({ name: 'حرکت معتبر', passed: move1.success });
-    const move2 = testGame.makeMove(0, 0, true, 0);
-    results.push({ name: 'جلوگیری از تکراری', passed: !move2.success });
-    const move3 = testGame.makeMove(0, 1, true, 1);
-    results.push({ name: 'تشخیص نوبت', passed: !move3.success });
-    const game4 = new GameLogic(2, 2);
-    game4.makeMove(0, 0, true, 0);
-    game4.makeMove(0, 0, false, 1);
-    game4.makeMove(1, 0, true, 0);
-    const move4 = game4.makeMove(1, 0, false, 1);
-    results.push({ name: 'نوبت بعد از مربع', passed: game4.currentPlayer === 0 });
-    setTestResults(results);
-  };
+  // ذخیره نتیجه بازی در پروفایل کاربر
+  useEffect(() => {
+    if (game && game.gameOver && user) {
+      const winner = game.getWinner();
+      if (winner === 0) {
+        // بازیکن انسانی برنده
+        auth.addWin(user.id);
+        auth.addScore(user.id, 5 + game.scores[0] * 2);
+        auth.addBoxes(user.id, game.scores[0]);
+        setGameResult('win');
+      } else if (winner === -1) {
+        auth.addScore(user.id, 2);
+        setGameResult('draw');
+      } else if (winner === 1) {
+        auth.addLoss(user.id);
+        auth.addScore(user.id, 1);
+        setGameResult('loss');
+      }
+      // به‌روزرسانی کاربر
+      const updated = auth.getUser(user.id);
+      if (updated) setUser(updated);
+    }
+  }, [game?.gameOver]);
+
+  if (showAuth) {
+    return (
+      <div className="container">
+        <h1>🧩 بازی مربع‌سازی کریپتویی</h1>
+        <p style={{ textAlign: 'center', color: '#4a5568', marginBottom: '20px' }}>
+          ثبت‌نام کنید و ۱۰ اعتبار رایگان دریافت کنید!
+        </p>
+        <AuthModal onLogin={handleLogin} isMobile={isMobile} />
+        <Leaderboard isMobile={isMobile} />
+      </div>
+    );
+  }
 
   if (!gameStarted) {
     return (
       <div className="container">
-        <h1>🧩 بازی مربع‌سازی</h1>
-        <p style={{ textAlign: 'center', color: '#4a5568', marginBottom: '20px' }}>
-          نقاط را به هم وصل کنید و مربع بسازید!
-        </p>
+        <h1>🧩 بازی مربع‌سازی کریپتویی</h1>
+        <Dashboard user={user} onLogout={handleLogout} onPlay={() => setGameStarted(true)} isMobile={isMobile} />
+        <Leaderboard isMobile={isMobile} />
         <GameSettings onStartGame={handleStartGame} isMobile={isMobile} />
-        <div style={{ textAlign: 'center', marginTop: '15px' }}>
-          <button onClick={runTests} style={{
-            background: '#48bb78',
-            boxShadow: '0 4px 12px rgba(72, 187, 120, 0.3)'
-          }}>
-            🧪 تست خودکار
-          </button>
-          {testResults.length > 0 && (
-            <div style={{
-              marginTop: '15px',
-              background: '#fefcbf',
-              padding: '15px',
-              borderRadius: '12px',
-              textAlign: 'right'
-            }}>
-              {testResults.map((r, i) => (
-                <div key={i}>{i+1}. {r.name}: {r.passed ? '✅ موفق' : '❌ خطا'}</div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     );
   }
@@ -195,6 +206,8 @@ export default function Home() {
     <div className="container">
       <h1 style={{ fontSize: isMobile ? '1.5rem' : '2rem' }}>🧩 بازی مربع‌سازی</h1>
       
+      <Dashboard user={user} onLogout={handleLogout} onPlay={() => {}} isMobile={isMobile} />
+
       <GameStatus
         scores={gameState.scores}
         currentPlayer={gameState.currentPlayer}
@@ -220,7 +233,13 @@ export default function Home() {
             transition: 'all 0.3s',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '8px',
+            padding: '8px 20px',
+            borderRadius: '30px',
+            border: 'none',
+            color: 'white',
+            fontWeight: '600',
+            cursor: 'pointer'
           }}
         >
           {coachMode ? '🧑‍🏫 مربی: فعال' : '🧑‍🏫 مربی: غیرفعال'}
@@ -236,6 +255,18 @@ export default function Home() {
             boxShadow: '0 2px 12px rgba(246, 173, 85, 0.3)'
           }}>
             ⭐ پیشنهاد: روی خط زرد رنگ کلیک کنید
+          </span>
+        )}
+        {gameResult && (
+          <span style={{
+            background: gameResult === 'win' ? '#48bb78' : gameResult === 'draw' ? '#ecc94b' : '#fc8181',
+            color: 'white',
+            padding: '4px 16px',
+            borderRadius: '30px',
+            fontWeight: '700',
+            fontSize: '0.9rem'
+          }}>
+            {gameResult === 'win' ? '🏆 برد!' : gameResult === 'draw' ? '🤝 مساوی' : '❌ باخت'}
           </span>
         )}
       </div>
@@ -259,28 +290,9 @@ export default function Home() {
       }}>
         <button onClick={resetGame}>🔄 بازی جدید</button>
         <button className="reset" onClick={() => { setGameStarted(false); setGame(null); }}>
-          🏠 تنظیمات
-        </button>
-        <button onClick={runTests} style={{
-          background: '#48bb78',
-          boxShadow: '0 4px 12px rgba(72, 187, 120, 0.3)'
-        }}>
-          🧪 تست
+          🏠 منوی اصلی
         </button>
       </div>
-
-      {testResults.length > 0 && (
-        <div style={{
-          marginTop: '15px',
-          background: '#fefcbf',
-          padding: '15px',
-          borderRadius: '12px'
-        }}>
-          {testResults.map((r, i) => (
-            <div key={i}>{i+1}. {r.name}: {r.passed ? '✅ موفق' : '❌ خطا'}</div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
