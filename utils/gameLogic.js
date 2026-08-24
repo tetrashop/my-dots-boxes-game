@@ -22,55 +22,36 @@ export class GameLogic {
     if (player !== this.currentPlayer) return { success: false, reason: 'wrong_turn' };
 
     const size = this.gridSize - 1;
-    
     if (isHorizontal) {
-      if (row < 0 || row >= size || col < 0 || col >= size - 1)
-        return { success: false, reason: 'invalid_position' };
-      if (this.horizontalLines[row][col])
-        return { success: false, reason: 'already_drawn' };
+      if (row < 0 || row >= size || col < 0 || col >= size - 1) return { success: false, reason: 'invalid_position' };
+      if (this.horizontalLines[row][col]) return { success: false, reason: 'already_drawn' };
       this.horizontalLines[row][col] = true;
     } else {
-      if (row < 0 || row >= size - 1 || col < 0 || col >= size)
-        return { success: false, reason: 'invalid_position' };
-      if (this.verticalLines[row][col])
-        return { success: false, reason: 'already_drawn' };
+      if (row < 0 || row >= size - 1 || col < 0 || col >= size) return { success: false, reason: 'invalid_position' };
+      if (this.verticalLines[row][col]) return { success: false, reason: 'already_drawn' };
       this.verticalLines[row][col] = true;
     }
 
     this.totalMoves++;
     this.moveHistory.push({ row, col, isHorizontal, player });
-    
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
     const filledCount = filledBoxes.length;
-
-    // تغییر نوبت به بازیکن بعدی (حتی اگر مربع ساخته شود)
     this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
-
     this.gameOver = this.checkGameOver();
 
-    return {
-      success: true,
-      filled: filledCount,
-      filledBoxes,
-      gameOver: this.gameOver,
-      scores: [...this.scores],
-      currentPlayer: this.currentPlayer
-    };
+    return { success: true, filled: filledCount, filledBoxes, gameOver: this.gameOver, scores: [...this.scores], currentPlayer: this.currentPlayer };
   }
 
   checkAndFillBoxes(row, col, isHorizontal, player) {
     const filledBoxes = [];
     const size = this.gridSize - 1;
-    
     const checkBox = (r, c) => {
       if (r < 0 || r >= size || c < 0 || c >= size) return false;
       if (this.boxes[r][c] !== 0) return false;
-      
       const top = this.horizontalLines[r]?.[c] || false;
       const bottom = (r + 1 < size) ? this.horizontalLines[r + 1]?.[c] || false : false;
       const left = this.verticalLines[r]?.[c] || false;
       const right = (c + 1 < size) ? this.verticalLines[r]?.[c + 1] || false : false;
-      
       if (top && bottom && left && right) {
         this.boxes[r][c] = player;
         this.scores[player - 1]++;
@@ -79,7 +60,6 @@ export class GameLogic {
       }
       return false;
     };
-
     if (isHorizontal) {
       if (row > 0) checkBox(row - 1, col);
       if (row < size) checkBox(row, col);
@@ -87,7 +67,6 @@ export class GameLogic {
       if (col > 0) checkBox(row, col - 1);
       if (col < size) checkBox(row, col);
     }
-    
     return filledBoxes;
   }
 
@@ -108,124 +87,42 @@ export class GameLogic {
     return winners.length === 1 ? winners[0] : -1;
   }
 
-  // ========== هوش مصنوعی پیشرفته ==========
   getAIMove(player) {
     if (this.currentPlayer !== player) return null;
-    
     const size = this.gridSize - 1;
-    const allMoves = [];
-    const opponent = (player + 1) % this.numPlayers;
-
-    // جمع‌آوری تمام حرکات ممکن
+    let bestMoves = [], regularMoves = [];
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size - 1; c++) {
         if (!this.horizontalLines[r][c]) {
-          allMoves.push({ row: r, col: c, isHorizontal: true });
+          const filled = this.simulateMove(r, c, true, player + 1);
+          if (filled.length > 0) bestMoves.push({ row: r, col: c, isHorizontal: true, priority: filled.length });
+          else regularMoves.push({ row: r, col: c, isHorizontal: true });
         }
       }
     }
     for (let r = 0; r < size - 1; r++) {
       for (let c = 0; c < size; c++) {
         if (!this.verticalLines[r][c]) {
-          allMoves.push({ row: r, col: c, isHorizontal: false });
+          const filled = this.simulateMove(r, c, false, player + 1);
+          if (filled.length > 0) bestMoves.push({ row: r, col: c, isHorizontal: false, priority: filled.length });
+          else regularMoves.push({ row: r, col: c, isHorizontal: false });
         }
       }
     }
-
-    if (allMoves.length === 0) return null;
-
-    // ارزیابی هر حرکت
-    const evaluated = allMoves.map(move => {
-      // شبیه‌سازی حرکت برای خودمان
-      const myFilled = this.simulateMove(move.row, move.col, move.isHorizontal, player + 1);
-      
-      // شبیه‌سازی حرکت برای حریف (اگر این حرکت را انجام دهیم، حریف چند مربع می‌سازد؟)
-      // برای جلوگیری از دادن مربع به حریف، حرکت را انجام می‌دهیم و سپس حرکت حریف را شبیه‌سازی می‌کنیم.
-      // اما برای سادگی، بررسی می‌کنیم که اگر این خط را رسم کنیم، آیا حریف در نوبت بعدی می‌تواند مربع بسازد؟
-      // این کار را با شبیه‌سازی کامل انجام می‌دهیم.
-      // برای صرفه‌جویی، فقط بررسی می‌کنیم که آیا حرکت ما باعث می‌شود که حریف یک مربع بسازد.
-      // روش: حرکت را اعمال می‌کنیم، سپس تمام خطوط ممکن برای حریف را بررسی می‌کنیم.
-      // چون این تابع پرهزینه است، فقط برای حرکاتی که مربع نمی‌سازند انجام می‌دهیم.
-      
-      let opponentThreat = 0;
-      if (myFilled.length === 0) {
-        // حرکت ما مربعی نمی‌سازد، ببینیم آیا حریف با یک حرکت می‌تواند مربع بسازد؟
-        // حرکت را موقتاً اعمال می‌کنیم
-        const backupH = this.horizontalLines.map(row => [...row]);
-        const backupV = this.verticalLines.map(row => [...row]);
-        const backupB = this.boxes.map(row => [...row]);
-        const backupS = [...this.scores];
-        
-        if (move.isHorizontal) {
-          this.horizontalLines[move.row][move.col] = true;
-        } else {
-          this.verticalLines[move.row][move.col] = true;
-        }
-        
-        // حالا بررسی می‌کنیم که آیا حریف می‌تواند با یک حرکت مربع بسازد؟
-        // تمام حرکات ممکن برای حریف را شبیه‌سازی می‌کنیم
-        for (let r = 0; r < size; r++) {
-          for (let c = 0; c < size - 1; c++) {
-            if (!this.horizontalLines[r][c]) {
-              const oppFilled = this.simulateMove(r, c, true, opponent + 1);
-              if (oppFilled.length > 0) opponentThreat += oppFilled.length;
-            }
-          }
-        }
-        for (let r = 0; r < size - 1; r++) {
-          for (let c = 0; c < size; c++) {
-            if (!this.verticalLines[r][c]) {
-              const oppFilled = this.simulateMove(r, c, false, opponent + 1);
-              if (oppFilled.length > 0) opponentThreat += oppFilled.length;
-            }
-          }
-        }
-        
-        // برگرداندن وضعیت
-        this.horizontalLines = backupH;
-        this.verticalLines = backupV;
-        this.boxes = backupB;
-        this.scores = backupS;
-      }
-      
-      return {
-        ...move,
-        myScore: myFilled.length,
-        opponentThreat: opponentThreat
-      };
-    });
-
-    // اولویت‌بندی: اول حرکت با بیشترین مربع‌سازی خودمان
-    const maxMyScore = Math.max(...evaluated.map(m => m.myScore));
-    const bestMoves = evaluated.filter(m => m.myScore === maxMyScore);
-    
-    if (maxMyScore > 0) {
-      // بین حرکات با بیشترین مربع، حرکتی که کمترین تهدید برای حریف را دارد انتخاب کن
-      bestMoves.sort((a, b) => a.opponentThreat - b.opponentThreat);
-      return bestMoves[0];
-    }
-
-    // اگر هیچ حرکتی مربع نمی‌سازد، حرکتی را انتخاب کن که کمترین تهدید را برای حریف دارد
-    evaluated.sort((a, b) => a.opponentThreat - b.opponentThreat);
-    return evaluated[0];
+    if (bestMoves.length > 0) { bestMoves.sort((a, b) => b.priority - a.priority); return bestMoves[0]; }
+    if (regularMoves.length === 0) return null;
+    return regularMoves[Math.floor(Math.random() * regularMoves.length)];
   }
 
-  // شبیه‌سازی یک حرکت و برگرداندن تعداد مربع‌های ساخته‌شده (بدون تغییر وضعیت اصلی)
   simulateMove(row, col, isHorizontal, player) {
-    const backupHorizontal = this.horizontalLines.map(row => [...row]);
-    const backupVertical = this.verticalLines.map(row => [...row]);
-    const backupBoxes = this.boxes.map(row => [...row]);
-    const backupScores = [...this.scores];
-    
-    if (isHorizontal) {
-      this.horizontalLines[row][col] = true;
-    } else {
-      this.verticalLines[row][col] = true;
-    }
-    
+    const backupH = this.horizontalLines.map(row => [...row]);
+    const backupV = this.verticalLines.map(row => [...row]);
+    const backupB = this.boxes.map(row => [...row]);
+    const backupS = [...this.scores];
+    if (isHorizontal) this.horizontalLines[row][col] = true;
+    else this.verticalLines[row][col] = true;
     const filled = [];
     const size = this.gridSize - 1;
-    
     const checkBox = (r, c) => {
       if (r < 0 || r >= size || c < 0 || c >= size) return;
       if (this.boxes[r][c] !== 0) return;
@@ -233,26 +130,14 @@ export class GameLogic {
       const bottom = (r + 1 < size) ? this.horizontalLines[r + 1]?.[c] || false : false;
       const left = this.verticalLines[r]?.[c] || false;
       const right = (c + 1 < size) ? this.verticalLines[r]?.[c + 1] || false : false;
-      if (top && bottom && left && right) {
-        this.boxes[r][c] = player;
-        this.scores[player - 1]++;
-        filled.push({ row: r, col: c });
-      }
+      if (top && bottom && left && right) { this.boxes[r][c] = player; this.scores[player - 1]++; filled.push({ row: r, col: c }); }
     };
-    
-    if (isHorizontal) {
-      if (row > 0) checkBox(row - 1, col);
-      if (row < size) checkBox(row, col);
-    } else {
-      if (col > 0) checkBox(row, col - 1);
-      if (col < size) checkBox(row, col);
-    }
-    
-    this.horizontalLines = backupHorizontal;
-    this.verticalLines = backupVertical;
-    this.boxes = backupBoxes;
-    this.scores = backupScores;
-    
+    if (isHorizontal) { if (row > 0) checkBox(row - 1, col); if (row < size) checkBox(row, col); }
+    else { if (col > 0) checkBox(row, col - 1); if (col < size) checkBox(row, col); }
+    this.horizontalLines = backupH;
+    this.verticalLines = backupV;
+    this.boxes = backupB;
+    this.scores = backupS;
     return filled;
   }
 
