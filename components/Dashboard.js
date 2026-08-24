@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { auth } from '../utils/auth';
+import WalletConnect from './WalletConnect';
 
 export default function Dashboard({ user, onLogout, onPlay, isMobile }) {
   const [bonusMsg, setBonusMsg] = useState('');
+  const [walletAddress, setWalletAddress] = useState('');
 
   const claimDailyBonus = () => {
     const result = auth.addDailyBonus(user.id);
@@ -31,8 +33,14 @@ export default function Dashboard({ user, onLogout, onPlay, isMobile }) {
           <strong style={{ fontSize: '1.1rem' }}>👤 {user.name}</strong>
           <div style={{ fontSize: '0.9rem', color: '#4a5568' }}>💰 {user.balance} اعتبار | ⭐ {user.score} امتیاز</div>
           <div style={{ fontSize: '0.85rem', color: '#718096' }}>✅ {user.wins} برد | ❌ {user.losses} باخت | 📦 {user.boxes} مربع</div>
+          {walletAddress && (
+            <div style={{ fontSize: '0.8rem', color: '#48bb78' }}>
+              🔗 {walletAddress.slice(0,8)}...{walletAddress.slice(-6)}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <WalletConnect onConnect={setWalletAddress} />
           <button onClick={claimDailyBonus} style={{ background: '#48bb78', padding: '6px 14px', borderRadius: '30px', border: 'none', color: 'white', fontWeight: '600', cursor: 'pointer', fontSize: isMobile ? '0.8rem' : '0.9rem' }}>
             🎁 جایزه روزانه
           </button>
