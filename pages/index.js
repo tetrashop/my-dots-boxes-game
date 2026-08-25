@@ -55,13 +55,11 @@ export default function Home() {
 
     setIsAIThinking(true);
     const delay = isMobile ? 600 + Math.random() * 400 : 400 + Math.random() * 300;
-    
     setTimeout(() => {
       const move = game.getAIMove(game.currentPlayer);
       if (move) {
         const result = game.makeMove(move.row, move.col, move.isHorizontal, game.currentPlayer);
         updateGameState();
-        // اگر بازیکن AI دوباره نوبت گرفت (مربع ساخت)، دوباره حرکت کن
         if (!result.gameOver && game.currentPlayer !== 0 && !coachMode) {
           makeAIMove();
         }
@@ -136,10 +134,7 @@ export default function Home() {
   const handlePlayerMove = (row, col, isHorizontal) => {
     if (!game || game.gameOver || game.currentPlayer !== 0 || isAIThinking) return;
     const result = game.makeMove(row, col, isHorizontal, 0);
-    if (result.success) {
-      updateGameState();
-      // اگر بازیکن دوباره نوبت گرفت (مربع ساخت)، منتظر حرکت بعدی هستیم
-    }
+    if (result.success) updateGameState();
   };
 
   const resetGame = () => {
@@ -166,7 +161,7 @@ export default function Home() {
     return (
       <div className="container">
         <h1>🧩 بازی مربع‌سازی</h1>
-        <p style={{ textAlign: 'center', color: '#4a5568', marginBottom: '20px' }}>
+        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)', marginBottom: '20px' }}>
           ثبت‌نام کنید و ۱۰ اعتبار رایگان دریافت کنید!
         </p>
         <AuthModal onLogin={handleLogin} isMobile={isMobile} />
@@ -201,40 +196,40 @@ export default function Home() {
       <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
         <button
           onClick={toggleCoach}
+          className={coachMode ? 'coach-btn active' : 'coach-btn'}
           style={{
-            background: coachMode ? '#ed8936' : '#a0aec0',
-            boxShadow: coachMode ? '0 4px 16px rgba(237,137,54,0.4)' : '0 2px 8px rgba(0,0,0,0.1)',
             padding: '8px 20px',
             borderRadius: '30px',
             border: 'none',
-            color: 'white',
             fontWeight: '600',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            transition: 'all 0.3s'
           }}
         >
           {coachMode ? '🧑‍🏫 مربی: فعال' : '🧑‍🏫 مربی: غیرفعال'}
         </button>
         {coachMode && suggestedMove && (
           <span style={{
-            background: '#f6ad55',
-            color: '#1a202c',
+            background: 'rgba(253, 203, 110, 0.15)',
+            color: '#FDCB6E',
             padding: '6px 16px',
             borderRadius: '30px',
             fontSize: '0.9rem',
             fontWeight: '600',
-            boxShadow: '0 2px 12px rgba(246,173,85,0.3)'
+            border: '1px solid rgba(253, 203, 110, 0.2)'
           }}>
             ⭐ پیشنهاد: خط زرد را بکشید
           </span>
         )}
         {gameResult && (
           <span style={{
-            background: gameResult === 'win' ? '#48bb78' : gameResult === 'draw' ? '#ecc94b' : '#fc8181',
-            color: 'white',
+            background: gameResult === 'win' ? 'rgba(0, 184, 148, 0.2)' : gameResult === 'draw' ? 'rgba(253, 203, 110, 0.2)' : 'rgba(255, 107, 107, 0.2)',
+            color: gameResult === 'win' ? '#00B894' : gameResult === 'draw' ? '#FDCB6E' : '#FF6B6B',
             padding: '4px 16px',
             borderRadius: '30px',
             fontWeight: '700',
-            fontSize: '0.9rem'
+            fontSize: '0.9rem',
+            border: '1px solid ' + (gameResult === 'win' ? 'rgba(0, 184, 148, 0.3)' : gameResult === 'draw' ? 'rgba(253, 203, 110, 0.3)' : 'rgba(255, 107, 107, 0.3)')
           }}>
             {gameResult === 'win' ? '🏆 برد!' : gameResult === 'draw' ? '🤝 مساوی' : '❌ باخت'}
           </span>

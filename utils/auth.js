@@ -1,3 +1,5 @@
+// سیستم احراز هویت با پشتیبانی از SSR (بدون خطای localStorage)
+
 const getStorage = () => {
   if (typeof window !== 'undefined') return localStorage;
   return null;

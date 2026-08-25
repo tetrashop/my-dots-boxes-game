@@ -18,12 +18,13 @@ export class GameLogic {
   }
 
   makeMove(row, col, isHorizontal, player) {
+    // اعتبارسنجی دقیق
     if (this.gameOver) return { success: false, reason: 'game_over' };
     if (player !== this.currentPlayer) return { success: false, reason: 'wrong_turn' };
 
     const size = this.gridSize - 1;
     
-    // بررسی اعتبار حرکت (فقط اینکه خط قبلاً رسم نشده باشد)
+    // بررسی موقعیت
     if (isHorizontal) {
       if (row < 0 || row >= size || col < 0 || col >= size - 1)
         return { success: false, reason: 'invalid_position' };
@@ -49,7 +50,6 @@ export class GameLogic {
     if (filledCount === 0) {
       this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
     }
-    // در غیر این صورت، همان بازیکن ادامه می‌دهد
 
     this.gameOver = this.checkGameOver();
 
@@ -118,7 +118,7 @@ export class GameLogic {
     if (this.currentPlayer !== player) return null;
     
     const size = this.gridSize - 1;
-    let allMoves = [];
+    const allMoves = [];
     
     // جمع‌آوری تمام حرکات ممکن
     for (let r = 0; r < size; r++) {
@@ -138,15 +138,14 @@ export class GameLogic {
 
     if (allMoves.length === 0) return null;
 
-    // ارزیابی هر حرکت
+    // ارزیابی هر حرکت با امتیازدهی هوشمند
     const evaluated = allMoves.map(move => {
       // ۱. چند مربع با این حرکت ساخته می‌شود؟
       const myFilled = this.simulateMove(move.row, move.col, move.isHorizontal, player + 1);
       
-      // ۲. اگر این حرکت را انجام دهیم، حریف در نوبت بعد چند مربع می‌سازد؟
+      // ۲. تهدید حریف (چند مربع حریف در نوبت بعد می‌سازد؟)
       let opponentThreat = 0;
       
-      // شبیه‌سازی حرکت
       const backupH = this.horizontalLines.map(row => [...row]);
       const backupV = this.verticalLines.map(row => [...row]);
       const backupB = this.boxes.map(row => [...row]);
@@ -158,7 +157,6 @@ export class GameLogic {
         this.verticalLines[move.row][move.col] = true;
       }
       
-      // بررسی حرکات حریف
       const opponent = (player + 1) % this.numPlayers;
       for (let r = 0; r < size; r++) {
         for (let c = 0; c < size - 1; c++) {
@@ -177,7 +175,6 @@ export class GameLogic {
         }
       }
       
-      // بازگرداندن وضعیت
       this.horizontalLines = backupH;
       this.verticalLines = backupV;
       this.boxes = backupB;
@@ -190,7 +187,7 @@ export class GameLogic {
       };
     });
 
-    // امتیازدهی نهایی: هر مربع خودی = +۱۰، هر تهدید حریف = -۵
+    // امتیازدهی: هر مربع خودی = +۱۰، هر تهدید حریف = -۵
     evaluated.sort((a, b) => {
       const scoreA = a.myScore * 10 - a.opponentThreat * 5;
       const scoreB = b.myScore * 10 - b.opponentThreat * 5;
