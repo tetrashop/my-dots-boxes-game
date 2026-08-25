@@ -27,34 +27,61 @@ export default function Dashboard({ user, onLogout, onPlay, isMobile }) {
   };
 
   return (
-    <div style={{ background: '#f7fafc', borderRadius: '16px', padding: '16px', marginBottom: '16px', border: '2px solid #e2e8f0' }}>
+    <div className="card" style={{ marginBottom: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
         <div>
-          <strong style={{ fontSize: '1.1rem' }}>👤 {user.name}</strong>
-          <div style={{ fontSize: '0.9rem', color: '#4a5568' }}>💰 {user.balance} اعتبار | ⭐ {user.score} امتیاز</div>
-          <div style={{ fontSize: '0.85rem', color: '#718096' }}>✅ {user.wins} برد | ❌ {user.losses} باخت | 📦 {user.boxes} مربع</div>
+          <strong style={{ fontSize: '1.1rem', color: '#A29BFE' }}>👤 {user.name}</strong>
+          <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)' }}>
+            💰 {user.balance} اعتبار | ⭐ {user.score} امتیاز
+          </div>
+          <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>
+            ✅ {user.wins} برد | ❌ {user.losses} باخت | 📦 {user.boxes} مربع
+          </div>
           {walletAddress && (
-            <div style={{ fontSize: '0.8rem', color: '#48bb78' }}>
+            <div style={{ fontSize: '0.8rem', color: '#00CEC9', marginTop: '4px' }}>
               🔗 {walletAddress.slice(0,8)}...{walletAddress.slice(-6)}
             </div>
           )}
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <WalletConnect onConnect={setWalletAddress} />
-          <button onClick={claimDailyBonus} style={{ background: '#48bb78', padding: '6px 14px', borderRadius: '30px', border: 'none', color: 'white', fontWeight: '600', cursor: 'pointer', fontSize: isMobile ? '0.8rem' : '0.9rem' }}>
+          <button className="success" onClick={claimDailyBonus} style={{ padding: '6px 14px', fontSize: isMobile ? '0.8rem' : '0.9rem' }}>
             🎁 جایزه روزانه
           </button>
-          <button onClick={shareResult} style={{ background: '#805ad5', padding: '6px 14px', borderRadius: '30px', border: 'none', color: 'white', fontWeight: '600', cursor: 'pointer', fontSize: isMobile ? '0.8rem' : '0.9rem' }}>
+          <button className="warning" onClick={shareResult} style={{ padding: '6px 14px', fontSize: isMobile ? '0.8rem' : '0.9rem', color: '#2D3436' }}>
             📤 اشتراک‌گذاری
           </button>
-          <button onClick={onLogout} style={{ background: '#fc8181', padding: '6px 14px', borderRadius: '30px', border: 'none', color: 'white', fontWeight: '600', cursor: 'pointer', fontSize: isMobile ? '0.8rem' : '0.9rem' }}>
+          <button className="reset" onClick={onLogout} style={{ padding: '6px 14px', fontSize: isMobile ? '0.8rem' : '0.9rem' }}>
             🚪 خروج
           </button>
         </div>
       </div>
-      {bonusMsg && <div style={{ marginTop: '10px', padding: '8px 12px', background: '#fefcbf', borderRadius: '12px', color: '#744210', textAlign: 'center' }}>{bonusMsg}</div>}
+      {bonusMsg && (
+        <div style={{
+          marginTop: '10px',
+          padding: '8px 12px',
+          background: 'rgba(253, 203, 110, 0.15)',
+          borderRadius: '12px',
+          color: '#FDCB6E',
+          textAlign: 'center',
+          border: '1px solid rgba(253, 203, 110, 0.2)'
+        }}>
+          {bonusMsg}
+        </div>
+      )}
       <div style={{ marginTop: '12px' }}>
-        <button onClick={onPlay} style={{ width: '100%', padding: '12px', borderRadius: '40px', background: '#4299e1', color: 'white', fontWeight: '700', fontSize: '1rem', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(66,153,225,0.3)' }}>
+        <button onClick={onPlay} style={{
+          width: '100%',
+          padding: '14px',
+          borderRadius: '40px',
+          background: 'linear-gradient(135deg, #6C5CE7, #00CEC9)',
+          color: 'white',
+          fontWeight: '800',
+          fontSize: '1.1rem',
+          border: 'none',
+          cursor: 'pointer',
+          boxShadow: '0 4px 24px rgba(108, 92, 231, 0.4)'
+        }}>
           🚀 شروع بازی
         </button>
       </div>

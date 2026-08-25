@@ -39,15 +39,8 @@ export default function AuthModal({ onLogin, isMobile }) {
   };
 
   return (
-    <div style={{
-      background: 'white',
-      borderRadius: '24px',
-      padding: isMobile ? '20px' : '28px',
-      maxWidth: '420px',
-      margin: '0 auto',
-      boxShadow: '0 8px 30px rgba(0,0,0,0.08)'
-    }}>
-      <h3 style={{ textAlign: 'center', marginBottom: '16px', color: '#1a202c' }}>
+    <div className="card" style={{ maxWidth: '420px', margin: '0 auto' }}>
+      <h3 style={{ textAlign: 'center', marginBottom: '16px', color: '#A29BFE' }}>
         {isLogin ? '🔐 ورود' : '📝 ثبت‌نام'}
       </h3>
       <form onSubmit={handleSubmit}>
@@ -62,18 +55,26 @@ export default function AuthModal({ onLogin, isMobile }) {
           <input type="text" placeholder="نام، ایمیل یا تلفن" value={email} onChange={(e) => setEmail(e.target.value)} style={{ marginBottom: '10px' }} required />
         )}
         <input type="password" placeholder="رمز عبور" value={password} onChange={(e) => setPassword(e.target.value)} style={{ marginBottom: '10px' }} required />
-        {error && <p style={{ color: '#e53e3e', fontSize: '0.9rem', marginBottom: '8px' }}>{error}</p>}
-        <button type="submit" style={{ width: '100%', padding: '12px', borderRadius: '40px', background: '#4299e1', color: 'white', fontWeight: '700', fontSize: '1rem', border: 'none', cursor: 'pointer' }} disabled={loading}>
+        {error && <p style={{ color: '#FF6B6B', fontSize: '0.9rem', marginBottom: '8px' }}>{error}</p>}
+        <button type="submit" style={{ width: '100%', padding: '12px', fontSize: '1rem' }} disabled={loading}>
           {loading ? '⏳ ...' : (isLogin ? 'ورود' : 'ثبت‌نام')}
         </button>
       </form>
-      <p style={{ textAlign: 'center', marginTop: '16px', color: '#4a5568' }}>
+      <p style={{ textAlign: 'center', marginTop: '16px', color: 'rgba(255,255,255,0.6)' }}>
         {isLogin ? 'حساب ندارید؟' : 'حساب دارید؟'}
-        <button onClick={() => { setIsLogin(!isLogin); setError(''); }} style={{ background: 'none', border: 'none', color: '#4299e1', fontWeight: '600', cursor: 'pointer', marginRight: '4px' }}>
+        <button onClick={() => { setIsLogin(!isLogin); setError(''); }} style={{
+          background: 'none',
+          border: 'none',
+          color: '#A29BFE',
+          fontWeight: '600',
+          cursor: 'pointer',
+          marginRight: '4px',
+          padding: '4px 8px'
+        }}>
           {isLogin ? 'ثبت‌نام کنید' : 'وارد شوید'}
         </button>
       </p>
-      <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#a0aec0', marginTop: '12px' }}>
+      <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', marginTop: '12px' }}>
         🎁 با ثبت‌نام ۱۰ اعتبار رایگان دریافت کنید
       </p>
     </div>
