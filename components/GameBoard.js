@@ -64,6 +64,7 @@ export default function GameBoard({
     const { cellSize, padding, totalSize } = dims;
     const { dotRadius } = getSizes();
     const gridSize = game.gridSize;
+    
     context.clearRect(0, 0, totalSize, totalSize);
     context.fillStyle = 'rgba(255,255,255,0.05)';
     context.fillRect(0, 0, totalSize, totalSize);
@@ -75,7 +76,7 @@ export default function GameBoard({
         const y = padding + r * cellSize;
         const isStart = startDot && startDot.row === r && startDot.col === c;
         const isHover = currentDot && currentDot.row === r && currentDot.col === c;
-        
+
         if (isStart || isHover) {
           context.beginPath();
           context.arc(x, y, dotRadius * 2.5, 0, 2 * Math.PI);
@@ -92,7 +93,7 @@ export default function GameBoard({
       }
     }
 
-    // خطوط رسم‌شده (افقی)
+    // خطوط افقی
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
         if (game.horizontalLines[r]?.[c]) {
@@ -113,7 +114,7 @@ export default function GameBoard({
       }
     }
 
-    // خطوط رسم‌شده (عمودی)
+    // خطوط عمودی
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
         if (game.verticalLines[r]?.[c]) {
@@ -135,7 +136,7 @@ export default function GameBoard({
       }
     }
 
-    // خط پیشنهادی مربی (طلایی، چشمک‌زن)
+    // خط پیشنهادی مربی
     if (suggestedMove && blinkState) {
       const { row, col, isHorizontal } = suggestedMove;
       const color = '#FDCB6E';
@@ -193,10 +194,10 @@ export default function GameBoard({
       const y1 = padding + startDot.row * cellSize;
       const x2 = padding + currentDot.col * cellSize;
       const y2 = padding + currentDot.row * cellSize;
-      
+
       const isAdjacent = (Math.abs(startDot.row - currentDot.row) + Math.abs(startDot.col - currentDot.col) === 1);
       const isValid = isAdjacent && (startDot.row === currentDot.row || startDot.col === currentDot.col);
-      
+
       context.shadowColor = isValid ? 'rgba(0, 206, 201, 0.5)' : 'rgba(255, 107, 107, 0.5)';
       context.shadowBlur = 20;
       context.beginPath();

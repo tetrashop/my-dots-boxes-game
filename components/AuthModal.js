@@ -62,15 +62,7 @@ export default function AuthModal({ onLogin, isMobile }) {
       </form>
       <p style={{ textAlign: 'center', marginTop: '16px', color: 'rgba(255,255,255,0.6)' }}>
         {isLogin ? 'حساب ندارید؟' : 'حساب دارید؟'}
-        <button onClick={() => { setIsLogin(!isLogin); setError(''); }} style={{
-          background: 'none',
-          border: 'none',
-          color: '#A29BFE',
-          fontWeight: '600',
-          cursor: 'pointer',
-          marginRight: '4px',
-          padding: '4px 8px'
-        }}>
+        <button onClick={() => { setIsLogin(!isLogin); setError(''); }} style={{ background: 'none', border: 'none', color: '#A29BFE', fontWeight: '600', cursor: 'pointer', marginRight: '4px', padding: '4px 8px' }}>
           {isLogin ? 'ثبت‌نام کنید' : 'وارد شوید'}
         </button>
       </p>

@@ -57,31 +57,12 @@ export default function Dashboard({ user, onLogout, onPlay, isMobile }) {
         </div>
       </div>
       {bonusMsg && (
-        <div style={{
-          marginTop: '10px',
-          padding: '8px 12px',
-          background: 'rgba(253, 203, 110, 0.15)',
-          borderRadius: '12px',
-          color: '#FDCB6E',
-          textAlign: 'center',
-          border: '1px solid rgba(253, 203, 110, 0.2)'
-        }}>
+        <div style={{ marginTop: '10px', padding: '8px 12px', background: 'rgba(253, 203, 110, 0.15)', borderRadius: '12px', color: '#FDCB6E', textAlign: 'center', border: '1px solid rgba(253, 203, 110, 0.2)' }}>
           {bonusMsg}
         </div>
       )}
       <div style={{ marginTop: '12px' }}>
-        <button onClick={onPlay} style={{
-          width: '100%',
-          padding: '14px',
-          borderRadius: '40px',
-          background: 'linear-gradient(135deg, #6C5CE7, #00CEC9)',
-          color: 'white',
-          fontWeight: '800',
-          fontSize: '1.1rem',
-          border: 'none',
-          cursor: 'pointer',
-          boxShadow: '0 4px 24px rgba(108, 92, 231, 0.4)'
-        }}>
+        <button onClick={onPlay} style={{ width: '100%', padding: '14px', borderRadius: '40px', background: 'linear-gradient(135deg, #6C5CE7, #00CEC9)', color: 'white', fontWeight: '800', fontSize: '1.1rem', border: 'none', cursor: 'pointer', boxShadow: '0 4px 24px rgba(108, 92, 231, 0.4)' }}>
           🚀 شروع بازی
         </button>
       </div>
