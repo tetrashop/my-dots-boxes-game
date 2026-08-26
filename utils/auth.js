@@ -52,7 +52,8 @@ export const auth = {
   getAllUsers: () => getUsers(),
   getLeaderboard: () => {
     const users = getUsers();
-    return users.sort((a, b) => b.score - a.score || b.balance - a.balance);
+    if (!users || users.length === 0) return [];
+    return users.sort((a, b) => (b.score || 0) - (a.score || 0) || (b.balance || 0) - (a.balance || 0));
   },
   addDailyBonus: (id) => {
     const user = auth.getUser(id);
@@ -69,21 +70,21 @@ export const auth = {
   addScore: (id, points) => {
     const user = auth.getUser(id);
     if (!user) return null;
-    return auth.updateUser(id, { score: user.score + points });
+    return auth.updateUser(id, { score: (user.score || 0) + points });
   },
   addWin: (id) => {
     const user = auth.getUser(id);
     if (!user) return null;
-    return auth.updateUser(id, { wins: user.wins + 1 });
+    return auth.updateUser(id, { wins: (user.wins || 0) + 1 });
   },
   addLoss: (id) => {
     const user = auth.getUser(id);
     if (!user) return null;
-    return auth.updateUser(id, { losses: user.losses + 1 });
+    return auth.updateUser(id, { losses: (user.losses || 0) + 1 });
   },
   addBoxes: (id, count) => {
     const user = auth.getUser(id);
     if (!user) return null;
-    return auth.updateUser(id, { boxes: user.boxes + count });
+    return auth.updateUser(id, { boxes: (user.boxes || 0) + count });
   }
 };

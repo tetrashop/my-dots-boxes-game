@@ -43,6 +43,7 @@ export class GameLogic {
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
     const filledCount = filledBoxes.length;
 
+    // اصلاح: اگر مربعی ساخته نشد، نوبت عوض شود
     if (filledCount === 0) {
       this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
     }
@@ -109,6 +110,7 @@ export class GameLogic {
     return winners.length === 1 ? winners[0] : -1;
   }
 
+  // ======== هوش مصنوعی هوشمند با fallback ========
   getAIMove(player) {
     if (this.currentPlayer !== player) return null;
     
@@ -183,7 +185,8 @@ export class GameLogic {
       return scoreB - scoreA;
     });
 
-    return evaluated[0];
+    // fallback: اگر همه حرکات امتیاز یکسان داشتند، اولین را برگردان
+    return evaluated[0] || allMoves[0];
   }
 
   simulateMove(row, col, isHorizontal, player) {

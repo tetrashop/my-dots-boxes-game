@@ -92,13 +92,16 @@ export default function GameBoard({
       }
     }
 
+    // Horizontal Lines
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
-        if (game.horizontalLines[r]?.[c]) {
+        if (game.horizontalLines && game.horizontalLines[r] && game.horizontalLines[r][c]) {
           const x1 = padding + c * cellSize;
           const y1 = padding + r * cellSize;
           const x2 = padding + (c + 1) * cellSize;
-          let player = game.boxes[r]?.[c] || game.boxes[r+1]?.[c] || 0;
+          let player = 0;
+          if (game.boxes && game.boxes[r]) player = game.boxes[r][c] || 0;
+          if (player === 0 && game.boxes && game.boxes[r+1]) player = game.boxes[r+1][c] || 0;
           context.beginPath();
           context.moveTo(x1, y1);
           context.lineTo(x2, y1);
@@ -112,14 +115,17 @@ export default function GameBoard({
       }
     }
 
+    // Vertical Lines
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
-        if (game.verticalLines[r]?.[c]) {
+        if (game.verticalLines && game.verticalLines[r] && game.verticalLines[r][c]) {
           const x1 = padding + c * cellSize;
           const y1 = padding + r * cellSize;
           const x2 = x1;
           const y2 = padding + (r + 1) * cellSize;
-          let player = game.boxes[r]?.[c] || game.boxes[r]?.[c+1] || 0;
+          let player = 0;
+          if (game.boxes && game.boxes[r]) player = game.boxes[r][c] || 0;
+          if (player === 0 && game.boxes && game.boxes[r] && game.boxes[r][c+1]) player = game.boxes[r][c+1] || 0;
           context.beginPath();
           context.moveTo(x1, y1);
           context.lineTo(x2, y2);
@@ -133,6 +139,7 @@ export default function GameBoard({
       }
     }
 
+    // Suggested Move
     if (suggestedMove && blinkState) {
       const { row, col, isHorizontal } = suggestedMove;
       const color = '#FDCB6E';
@@ -184,6 +191,7 @@ export default function GameBoard({
       }
     }
 
+    // Temporary Line
     if (isDragging && startDot && currentDot) {
       const x1 = padding + startDot.col * cellSize;
       const y1 = padding + startDot.row * cellSize;
@@ -207,9 +215,10 @@ export default function GameBoard({
       context.shadowBlur = 0;
     }
 
+    // Boxes
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
-        if (game.boxes[r]?.[c] && game.boxes[r][c] !== 0) {
+        if (game.boxes && game.boxes[r] && game.boxes[r][c] && game.boxes[r][c] !== 0) {
           const x = padding + c * cellSize;
           const y = padding + r * cellSize;
           const color = playerColors[game.boxes[r][c] - 1];
@@ -270,8 +279,10 @@ export default function GameBoard({
 
   const isLineDrawn = (line) => {
     if (!line) return true;
-    if (line.isHorizontal) return game.horizontalLines[line.row]?.[line.col] || false;
-    return game.verticalLines[line.row]?.[line.col] || false;
+    if (line.isHorizontal) {
+      return game.horizontalLines && game.horizontalLines[line.row] && game.horizontalLines[line.row][line.col] || false;
+    }
+    return game.verticalLines && game.verticalLines[line.row] && game.verticalLines[line.row][line.col] || false;
   };
 
   const handlePointerDown = (e) => {
@@ -373,7 +384,9 @@ export default function GameBoard({
         boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
       }}>
         🎯 بازی تمام شد!
-        <div style={{ fontSize: '0.9rem', marginTop: '8px', opacity: 0.9 }}>{game.getWinner() !== null && game.getWinner() !== -1 ? `🏆 بازیکن ${game.getWinner() + 1} برنده شد!` : game.getWinner() === -1 ? '🤝 مساوی!' : ''}</div>
+        <div style={{ fontSize: '0.9rem', marginTop: '8px', opacity: 0.9 }}>
+          {game.getWinner() !== null && game.getWinner() !== -1 ? `🏆 بازیکن ${game.getWinner() + 1} برنده شد!` : game.getWinner() === -1 ? '🤝 مساوی!' : ''}
+        </div>
       </div>}
     </div>
   );
