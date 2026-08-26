@@ -137,21 +137,6 @@ export default function Home() {
     if (result.success) updateGameState();
   };
 
-// در pages/index.js، تابع handleLogin یا اتصال کیف پول را اصلاح کنید
-const handleWalletConnect = async (address) => {
-  try {
-    const { provider, signer, contract } = await initWeb3();
-    if (signer) {
-      const address = await signer.getAddress();
-      setUser(prev => ({ ...prev, walletAddress: address }));
-    }
-  } catch (error) {
-    console.error('خطا در اتصال:', error);
-    // نمایش خطا به کاربر
-    alert(error.message);
-  }
-};
-
   const resetGame = () => {
     if (game) {
       game.reset();
