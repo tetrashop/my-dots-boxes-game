@@ -1,51 +1,46 @@
 import { ethers } from 'ethers';
 import config from './config';
 import contractABI from './contractABI.json';
-import { getWorkingRPC, RPC_PROVIDERS } from './rpcProviders';
 
 let provider, signer, contract;
-let currentRPC = '';
-
-// تشخیص تحریم با بررسی RPC
-export const checkSanctions = async () => {
-  try {
-    const testProvider = new ethers.JsonRpcProvider(RPC_PROVIDERS[0].url);
-    await testProvider.getBlockNumber();
-    return false; // بدون تحریم
-  } catch (e) {
-    console.log('⚠️ RPC blocked, switching...');
-    return true; // تحریم فعال است
-  }
-};
 
 export const initWeb3 = async () => {
-  // ابتدا RPC کار را پیدا کن
-  currentRPC = await getWorkingRPC();
-  console.log('✅ Using RPC:', currentRPC);
+  // بررسی وجود متامسک
+  if (typeof window === 'undefined') {
+    throw new Error('مرورگر پشتیبانی نمی‌شود');
+  }
   
-  // ایجاد provider با RPC جایگزین
-  provider = new ethers.JsonRpcProvider(currentRPC);
-  
-  // اگر متامسک موجود است، از آن استفاده کن
-  if (typeof window !== 'undefined' && window.ethereum) {
-    try {
-      const browserProvider = new ethers.BrowserProvider(window.ethereum);
-      signer = await browserProvider.getSigner();
-    } catch (e) {
-      console.log('⚠️ MetaMask not available, using fallback');
-      // استفاده از کیف پول خواندنی (بدون امضا)
+  // بررسی ethereum provider
+  if (!window.ethereum) {
+    // بررسی موبایل
+    const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.open('https://metamask.app.link/dapp/' + window.location.href, '_blank');
+      throw new Error('لطفاً متامسک را باز کنید');
     }
+    throw new Error('متامسک نصب نیست');
   }
   
-  // مقداردهی قرارداد
-  if (config.contractAddress && config.contractAddress !== '0x0000000000000000000000000000000000000000') {
-    contract = new ethers.Contract(config.contractAddress, contractABI, provider);
+  try {
+    // درخواست اتصال
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+    
+    provider = new ethers.BrowserProvider(window.ethereum);
+    signer = await provider.getSigner();
+    
+    // مقداردهی قرارداد
+    if (config.contractAddress && config.contractAddress !== '0x0000000000000000000000000000000000000000') {
+      contract = new ethers.Contract(config.contractAddress, contractABI, signer);
+    }
+    
+    return { provider, signer, contract };
+  } catch (error) {
+    console.error('خطا در اتصال به متامسک:', error);
+    throw error;
   }
-  
-  return { provider, signer, contract, currentRPC };
 };
 
 export const getContract = () => contract;
 export const getProvider = () => provider;
 export const getSigner = () => signer;
-export const getRPC = () => currentRPC;
+export const getConfig = () => config;
