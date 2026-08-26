@@ -9,7 +9,8 @@ export default function WalletConnect({ onConnect }) {
   useEffect(() => {
     const checkInstall = () => {
       if (typeof window !== 'undefined') {
-        const isMetaMask = window.ethereum && window.ethereum.isMetaMask;
+        const hasEthereum = window.ethereum !== undefined && window.ethereum !== null;
+        const isMetaMask = hasEthereum && window.ethereum.isMetaMask === true;
         setIsInstalled(!!isMetaMask);
       }
     };
@@ -38,7 +39,7 @@ export default function WalletConnect({ onConnect }) {
       
       if (accounts && accounts.length > 0) {
         setAddress(accounts[0]);
-        onConnect(accounts[0]);
+        if (onConnect) onConnect(accounts[0]);
       } else {
         setError('هیچ حسابی یافت نشد');
       }
@@ -46,6 +47,8 @@ export default function WalletConnect({ onConnect }) {
       console.error('Error:', err);
       if (err.code === 4001) {
         setError('درخواست اتصال رد شد');
+      } else if (err.code === -32002) {
+        setError('لطفاً درخواست متامسک را تأیید کنید');
       } else {
         setError('خطا: ' + (err.message || 'مشکل در اتصال'));
       }
@@ -75,7 +78,8 @@ export default function WalletConnect({ onConnect }) {
             color: 'white',
             fontWeight: '600',
             cursor: 'pointer',
-            fontSize: '0.9rem'
+            fontSize: '0.9rem',
+            boxShadow: '0 4px 12px rgba(255,107,107,0.3)'
           }}
         >
           📥 نصب متامسک
@@ -92,6 +96,7 @@ export default function WalletConnect({ onConnect }) {
             fontWeight: '600',
             cursor: 'pointer',
             fontSize: '0.9rem',
+            boxShadow: address ? '0 4px 12px rgba(0,184,148,0.3)' : '0 4px 12px rgba(108,92,231,0.3)',
             opacity: loading ? 0.6 : 1
           }}
           disabled={loading}

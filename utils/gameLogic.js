@@ -18,13 +18,11 @@ export class GameLogic {
   }
 
   makeMove(row, col, isHorizontal, player) {
-    // اعتبارسنجی دقیق
     if (this.gameOver) return { success: false, reason: 'game_over' };
     if (player !== this.currentPlayer) return { success: false, reason: 'wrong_turn' };
 
     const size = this.gridSize - 1;
     
-    // بررسی موقعیت
     if (isHorizontal) {
       if (row < 0 || row >= size || col < 0 || col >= size - 1)
         return { success: false, reason: 'invalid_position' };
@@ -42,11 +40,9 @@ export class GameLogic {
     this.totalMoves++;
     this.moveHistory.push({ row, col, isHorizontal, player });
     
-    // بررسی مربع‌های ساخته شده
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
     const filledCount = filledBoxes.length;
 
-    // قانون اصلی: اگر مربعی ساخته شد، بازیکن دوباره حرکت می‌کند
     if (filledCount === 0) {
       this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
     }
@@ -113,14 +109,12 @@ export class GameLogic {
     return winners.length === 1 ? winners[0] : -1;
   }
 
-  // ======== هوش مصنوعی قدرتمند ========
   getAIMove(player) {
     if (this.currentPlayer !== player) return null;
     
     const size = this.gridSize - 1;
     const allMoves = [];
     
-    // جمع‌آوری تمام حرکات ممکن
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size - 1; c++) {
         if (!this.horizontalLines[r][c]) {
@@ -138,14 +132,10 @@ export class GameLogic {
 
     if (allMoves.length === 0) return null;
 
-    // ارزیابی هر حرکت با امتیازدهی هوشمند
     const evaluated = allMoves.map(move => {
-      // ۱. چند مربع با این حرکت ساخته می‌شود؟
       const myFilled = this.simulateMove(move.row, move.col, move.isHorizontal, player + 1);
       
-      // ۲. تهدید حریف (چند مربع حریف در نوبت بعد می‌سازد؟)
       let opponentThreat = 0;
-      
       const backupH = this.horizontalLines.map(row => [...row]);
       const backupV = this.verticalLines.map(row => [...row]);
       const backupB = this.boxes.map(row => [...row]);
@@ -187,7 +177,6 @@ export class GameLogic {
       };
     });
 
-    // امتیازدهی: هر مربع خودی = +۱۰، هر تهدید حریف = -۵
     evaluated.sort((a, b) => {
       const scoreA = a.myScore * 10 - a.opponentThreat * 5;
       const scoreB = b.myScore * 10 - b.opponentThreat * 5;

@@ -1,5 +1,3 @@
-// ===== مدیریت متمرکز متغیرهای محیطی =====
-
 const config = {
   network: process.env.NEXT_PUBLIC_NETWORK || 'sepolia',
   rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.sepolia.org',

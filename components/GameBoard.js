@@ -69,7 +69,6 @@ export default function GameBoard({
     context.fillStyle = 'rgba(255,255,255,0.05)';
     context.fillRect(0, 0, totalSize, totalSize);
 
-    // نقاط
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
         const x = padding + c * cellSize;
@@ -93,7 +92,6 @@ export default function GameBoard({
       }
     }
 
-    // خطوط افقی
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
         if (game.horizontalLines[r]?.[c]) {
@@ -114,7 +112,6 @@ export default function GameBoard({
       }
     }
 
-    // خطوط عمودی
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
         if (game.verticalLines[r]?.[c]) {
@@ -136,7 +133,6 @@ export default function GameBoard({
       }
     }
 
-    // خط پیشنهادی مربی
     if (suggestedMove && blinkState) {
       const { row, col, isHorizontal } = suggestedMove;
       const color = '#FDCB6E';
@@ -188,7 +184,6 @@ export default function GameBoard({
       }
     }
 
-    // خط موقت
     if (isDragging && startDot && currentDot) {
       const x1 = padding + startDot.col * cellSize;
       const y1 = padding + startDot.row * cellSize;
@@ -212,7 +207,6 @@ export default function GameBoard({
       context.shadowBlur = 0;
     }
 
-    // مربع‌های پر شده
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
         if (game.boxes[r]?.[c] && game.boxes[r][c] !== 0) {
