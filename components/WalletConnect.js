@@ -1,48 +1,46 @@
 import { useState, useEffect } from 'react';
+import { initWeb3 } from '../utils/web3';
 
-export default function WalletConnect({ onConnect }) {
+export default function WalletConnect({ onConnect, onDisconnect }) {
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isInstalled, setIsInstalled] = useState(false);
 
+  // بررسی نصب متامسک
   useEffect(() => {
     const checkInstall = () => {
       if (typeof window !== 'undefined') {
         const hasEthereum = window.ethereum !== undefined && window.ethereum !== null;
-        const isMetaMask = hasEthereum && window.ethereum.isMetaMask === true;
-        setIsInstalled(!!isMetaMask);
+        setIsInstalled(hasEthereum && window.ethereum.isMetaMask === true);
       }
     };
     checkInstall();
-  }, []);
+
+    // گوش دادن به تغییرات حساب
+    if (typeof window !== 'undefined' && window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length === 0) {
+          setAddress('');
+          if (onDisconnect) onDisconnect();
+        } else {
+          setAddress(accounts[0]);
+          if (onConnect) onConnect(accounts[0]);
+        }
+      });
+      window.ethereum.on('chainChanged', () => window.location.reload());
+    }
+  }, [onConnect, onDisconnect]);
 
   const connectWallet = async () => {
     setLoading(true);
     setError('');
     
     try {
-      if (typeof window === 'undefined' || !window.ethereum) {
-        const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-        if (isMobile) {
-          window.open('https://metamask.app.link/dapp/' + window.location.href, '_blank');
-          setError('لطفاً متامسک را باز کنید و سپس به این صفحه برگردید.');
-          setLoading(false);
-          return;
-        }
-        throw new Error('متامسک نصب نیست!');
-      }
-
-      const accounts = await window.ethereum.request({ 
-        method: 'eth_requestAccounts' 
-      });
-      
-      if (accounts && accounts.length > 0) {
-        setAddress(accounts[0]);
-        if (onConnect) onConnect(accounts[0]);
-      } else {
-        setError('هیچ حسابی یافت نشد');
-      }
+      const { signer } = await initWeb3();
+      const address = await signer.getAddress();
+      setAddress(address);
+      if (onConnect) onConnect(address);
     } catch (err) {
       console.error('Error:', err);
       if (err.code === 4001) {
@@ -50,7 +48,7 @@ export default function WalletConnect({ onConnect }) {
       } else if (err.code === -32002) {
         setError('لطفاً درخواست متامسک را تأیید کنید');
       } else {
-        setError('خطا: ' + (err.message || 'مشکل در اتصال'));
+        setError(err.message || 'خطا در اتصال کیف پول');
       }
     }
     setLoading(false);

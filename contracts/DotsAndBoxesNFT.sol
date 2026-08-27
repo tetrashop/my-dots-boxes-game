@@ -307,7 +307,6 @@ contract DotsAndBoxesNFT is ERC721, Ownable {
         emit NFTRented(tokenId, msg.sender, duration);
     }
 
-    // ===== تابع royaltyInfo بدون هشدار =====
     function royaltyInfo(uint256 /* tokenId */, uint256 salePrice) external view returns (address receiver, uint256 royaltyAmount) {
         royaltyAmount = (salePrice * ROYALTY_PERCENT) / 10000;
         return (owner(), royaltyAmount);

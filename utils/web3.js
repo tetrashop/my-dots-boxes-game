@@ -10,9 +10,7 @@ export const initWeb3 = async () => {
     throw new Error('مرورگر پشتیبانی نمی‌شود');
   }
   
-  // بررسی ethereum provider
   if (!window.ethereum) {
-    // بررسی موبایل
     const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
     if (isMobile) {
       window.open('https://metamask.app.link/dapp/' + window.location.href, '_blank');
@@ -20,7 +18,7 @@ export const initWeb3 = async () => {
     }
     throw new Error('متامسک نصب نیست');
   }
-  
+
   try {
     // درخواست اتصال
     await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -28,9 +26,13 @@ export const initWeb3 = async () => {
     provider = new ethers.BrowserProvider(window.ethereum);
     signer = await provider.getSigner();
     
-    // مقداردهی قرارداد
-    if (config.contractAddress && config.contractAddress !== '0x0000000000000000000000000000000000000000') {
-      contract = new ethers.Contract(config.contractAddress, contractABI, signer);
+    // بررسی آدرس قرارداد
+    const contractAddress = config.contractAddress;
+    if (contractAddress && contractAddress !== '0x0000000000000000000000000000000000000000') {
+      contract = new ethers.Contract(contractAddress, contractABI, signer);
+    } else {
+      console.warn('⚠️ آدرس قرارداد تنظیم نشده است');
+      contract = null;
     }
     
     return { provider, signer, contract };
@@ -43,4 +45,51 @@ export const initWeb3 = async () => {
 export const getContract = () => contract;
 export const getProvider = () => provider;
 export const getSigner = () => signer;
-export const getConfig = () => config;
+
+// تابع ضرب NFT
+export const mintNFT = async (recipient, uri) => {
+  if (!contract) throw new Error('قرارداد متصل نیست');
+  try {
+    const tx = await contract.mintNFT(recipient, uri);
+    const receipt = await tx.wait();
+    return receipt;
+  } catch (error) {
+    console.error('خطا در ضرب NFT:', error);
+    throw new Error('خطا در ضرب NFT: ' + error.message);
+  }
+};
+
+// تابع ارتقا NFT
+export const upgradeNFT = async (tokenId) => {
+  if (!contract) throw new Error('قرارداد متصل نیست');
+  try {
+    const tx = await contract.upgradeNFT(tokenId);
+    const receipt = await tx.wait();
+    return receipt;
+  } catch (error) {
+    console.error('خطا در ارتقا NFT:', error);
+    throw new Error('خطا در ارتقا NFT: ' + error.message);
+  }
+};
+
+// دریافت جزئیات NFT
+export const getNFTDetails = async (tokenId) => {
+  if (!contract) throw new Error('قرارداد متصل نیست');
+  try {
+    return await contract.nftDetails(tokenId);
+  } catch (error) {
+    console.error('خطا در دریافت جزئیات NFT:', error);
+    return null;
+  }
+};
+
+// دریافت مالک NFT
+export const getOwner = async (tokenId) => {
+  if (!contract) throw new Error('قرارداد متصل نیست');
+  try {
+    return await contract.ownerOf(tokenId);
+  } catch (error) {
+    console.error('خطا در دریافت مالک:', error);
+    return null;
+  }
+};
