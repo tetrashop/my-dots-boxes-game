@@ -1,15 +1,9 @@
 const { ethers } = require('ethers');
+const ABI = require('./utils/contractABI.json');
 
+// ===== آدرس جدید قرارداد =====
+const CONTRACT_ADDRESS = '0x3328358128832A260C76A4141e19E2A943CD4B6D';
 const RPC = 'https://ethereum-sepolia.publicnode.com';
-const CONTRACT_ADDRESS = '0xf8e81D47203A594245E36C48e151709F0C19fBe8';
-
-// ABI مختصر برای تست
-const ABI = [
-  "function owner() view returns (address)",
-  "function ROYALTY_PERCENT() view returns (uint256)",
-  "function RENTAL_FEE_PERCENT() view returns (uint256)",
-  "function prizePool() view returns (address)",
-];
 
 async function testContract() {
   const provider = new ethers.JsonRpcProvider(RPC);
