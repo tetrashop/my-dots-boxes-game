@@ -1,7 +1,7 @@
 const { ethers } = require('ethers');
 const ABI = require('./utils/contractABI.json');
 
-const CONTRACT_ADDRESS = '0x5e17b14ADd6c386305A32928F985b29bbA34Eff5';
+const CONTRACT_ADDRESS = '0x1c91347f2A44538ce62453BEBd9Aa907C662b4bD';
 const RPC = 'https://ethereum-sepolia.publicnode.com';
 
 async function testContract() {
