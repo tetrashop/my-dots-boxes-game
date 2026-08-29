@@ -1,8 +1,11 @@
 const config = {
   network: process.env.NEXT_PUBLIC_NETWORK || 'sepolia',
-  rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || 'https://ethereum-sepolia.publicnode.com',
-  contractAddress: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0xf8e81D47203A594245E36C48e151709F0C19fBe8',
-  // ... بقیه متغیرها به همان صورت
+  rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.sepolia.org',
+  contractAddress: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0xddaAd340b0f1Ef65169Ae5E41A8b10776a75482d',
+  defaultGridSize: parseInt(process.env.NEXT_PUBLIC_DEFAULT_GRID_SIZE || '4'),
+  defaultPlayers: parseInt(process.env.NEXT_PUBLIC_DEFAULT_PLAYERS || '2'),
+  dailyBonus: parseInt(process.env.NEXT_PUBLIC_DAILY_BONUS || '3'),
+  initialBalance: parseInt(process.env.NEXT_PUBLIC_INITIAL_BALANCE || '10'),
 };
 
 export default config;
