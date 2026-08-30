@@ -33,7 +33,9 @@ export default function GameBoard({
 
   const calculateDimensions = useCallback(() => {
     const { cellSize, padding } = getSizes();
-    const totalSize = (gridSize - 1) * cellSize + padding * 2;
+    const dots = gridSize;
+    const boxes = gridSize - 1;
+    const totalSize = boxes * cellSize + padding * 2;
     return { cellSize, padding, totalSize };
   }, [gridSize, getSizes]);
 
@@ -64,15 +66,16 @@ export default function GameBoard({
     const { cellSize, padding, totalSize } = dims;
     const { dotRadius } = getSizes();
     const gridSize = game.gridSize;
+    const dots = gridSize;
     const boxes = gridSize - 1;
     
     context.clearRect(0, 0, totalSize, totalSize);
     context.fillStyle = 'rgba(255,255,255,0.05)';
     context.fillRect(0, 0, totalSize, totalSize);
 
-    // ===== نقاط =====
-    for (let r = 0; r < gridSize; r++) {
-      for (let c = 0; c < gridSize; c++) {
+    // ===== ۱. رسم نقاط (dots × dots) =====
+    for (let r = 0; r < dots; r++) {
+      for (let c = 0; c < dots; c++) {
         const x = padding + c * cellSize;
         const y = padding + r * cellSize;
         const isStart = startDot && startDot.row === r && startDot.col === c;
@@ -94,9 +97,9 @@ export default function GameBoard({
       }
     }
 
-    // ===== خطوط افقی =====
+    // ===== ۲. رسم خطوط افقی (boxes × dots) =====
     for (let r = 0; r < boxes; r++) {
-      for (let c = 0; c < boxes + 1; c++) {
+      for (let c = 0; c < dots; c++) {
         if (game.horizontalLines && game.horizontalLines[r] && game.horizontalLines[r][c]) {
           const x1 = padding + c * cellSize;
           const y1 = padding + r * cellSize;
@@ -114,8 +117,8 @@ export default function GameBoard({
       }
     }
 
-    // ===== خطوط عمودی =====
-    for (let r = 0; r < boxes + 1; r++) {
+    // ===== ۳. رسم خطوط عمودی (dots × boxes) =====
+    for (let r = 0; r < dots; r++) {
       for (let c = 0; c < boxes; c++) {
         if (game.verticalLines && game.verticalLines[r] && game.verticalLines[r][c]) {
           const x1 = padding + c * cellSize;
@@ -135,7 +138,7 @@ export default function GameBoard({
       }
     }
 
-    // ===== خط پیشنهادی مربی =====
+    // ===== ۴. خط پیشنهادی مربی =====
     if (suggestedMove && blinkState) {
       const { row, col, isHorizontal } = suggestedMove;
       const color = '#FDCB6E';
@@ -187,7 +190,7 @@ export default function GameBoard({
       }
     }
 
-    // ===== خط موقت =====
+    // ===== ۵. خط موقت (در حال کشیدن) =====
     if (isDragging && startDot && currentDot) {
       const x1 = padding + startDot.col * cellSize;
       const y1 = padding + startDot.row * cellSize;
@@ -211,7 +214,7 @@ export default function GameBoard({
       context.shadowBlur = 0;
     }
 
-    // ===== مربع‌های پر شده =====
+    // ===== ۶. مربع‌های پر شده (boxes × boxes) =====
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < boxes; c++) {
         if (game.boxes && game.boxes[r] && game.boxes[r][c] && game.boxes[r][c] !== 0) {
@@ -236,7 +239,7 @@ export default function GameBoard({
     }
   };
 
-  // ===== توابع رویداد =====
+  // ===== توابع کمکی =====
   const getCanvasCoords = (clientX, clientY) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -248,10 +251,11 @@ export default function GameBoard({
   const findNearestDot = (x, y) => {
     const { cellSize, padding } = dimensions;
     const gridSize = game.gridSize;
+    const dots = gridSize;
     const threshold = 25;
     let minDist = threshold, nearest = null;
-    for (let r = 0; r < gridSize; r++) {
-      for (let c = 0; c < gridSize; c++) {
+    for (let r = 0; r < dots; r++) {
+      for (let c = 0; c < dots; c++) {
         const dotX = padding + c * cellSize;
         const dotY = padding + r * cellSize;
         const dist = Math.hypot(x - dotX, y - dotY);
