@@ -33,6 +33,7 @@ export default function GameBoard({
 
   const calculateDimensions = useCallback(() => {
     const { cellSize, padding } = getSizes();
+    // تعداد نقاط = gridSize، تعداد مربع‌ها = gridSize - 1
     const totalSize = (gridSize - 1) * cellSize + padding * 2;
     return { cellSize, padding, totalSize };
   }, [gridSize, getSizes]);
@@ -69,6 +70,7 @@ export default function GameBoard({
     context.fillStyle = 'rgba(255,255,255,0.05)';
     context.fillRect(0, 0, totalSize, totalSize);
 
+    // ===== ۱. رسم نقاط =====
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
         const x = padding + c * cellSize;
@@ -92,7 +94,8 @@ export default function GameBoard({
       }
     }
 
-    // Horizontal Lines
+    // ===== ۲. رسم خطوط افقی =====
+    // تعداد خطوط افقی: (gridSize - 1) ردیف × (gridSize - 1) ستون
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
         if (game.horizontalLines && game.horizontalLines[r] && game.horizontalLines[r][c]) {
@@ -115,7 +118,8 @@ export default function GameBoard({
       }
     }
 
-    // Vertical Lines
+    // ===== ۳. رسم خطوط عمودی =====
+    // تعداد خطوط عمودی: (gridSize - 1) ردیف × (gridSize - 1) ستون
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
         if (game.verticalLines && game.verticalLines[r] && game.verticalLines[r][c]) {
@@ -139,7 +143,7 @@ export default function GameBoard({
       }
     }
 
-    // Suggested Move
+    // ===== ۴. خط پیشنهادی مربی =====
     if (suggestedMove && blinkState) {
       const { row, col, isHorizontal } = suggestedMove;
       const color = '#FDCB6E';
@@ -191,7 +195,7 @@ export default function GameBoard({
       }
     }
 
-    // Temporary Line
+    // ===== ۵. خط موقت (در حال کشیدن) =====
     if (isDragging && startDot && currentDot) {
       const x1 = padding + startDot.col * cellSize;
       const y1 = padding + startDot.row * cellSize;
@@ -215,7 +219,7 @@ export default function GameBoard({
       context.shadowBlur = 0;
     }
 
-    // Boxes
+    // ===== ۶. مربع‌های پر شده =====
     for (let r = 0; r < gridSize - 1; r++) {
       for (let c = 0; c < gridSize - 1; c++) {
         if (game.boxes && game.boxes[r] && game.boxes[r][c] && game.boxes[r][c] !== 0) {
@@ -240,6 +244,7 @@ export default function GameBoard({
     }
   };
 
+  // ===== توابع کمکی (بدون تغییر) =====
   const getCanvasCoords = (clientX, clientY) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
