@@ -1,21 +1,27 @@
 export class GameLogic {
   constructor(gridSize = 4, numPlayers = 2) {
     // gridSize = تعداد نقاط در هر ردیف/ستون (مثلاً ۴ نقطه)
-    // تعداد مربع‌ها = gridSize (مثلاً ۴ مربع)
+    // تعداد مربع‌ها = gridSize - 1 (مثلاً ۳ مربع)
     this.gridSize = gridSize;
     this.numPlayers = numPlayers;
     this.reset();
   }
 
   reset() {
-    const dots = this.gridSize;           // تعداد نقاط = gridSize
-    const boxes = this.gridSize;          // تعداد مربع‌ها = gridSize
+    const points = this.gridSize;           // تعداد نقاط = gridSize
+    const boxes = this.gridSize - 1;        // تعداد مربع‌ها = gridSize - 1
     
-    // خطوط افقی: boxes ردیف × (boxes) ستون (بین نقاط)
-    this.horizontalLines = Array.from({ length: boxes }, () => Array(boxes).fill(false));
-    // خطوط عمودی: boxes ردیف × boxes ستون (بین نقاط)
-    this.verticalLines = Array.from({ length: boxes }, () => Array(boxes).fill(false));
-    // مربع‌ها: boxes × boxes
+    // ===== خطوط افقی: boxes ردیف × (boxes + 1) ستون =====
+    // ردیف‌ها: 0 تا boxes-1 (تعداد boxes ردیف)
+    // ستون‌ها: 0 تا boxes (تعداد boxes+1 ستون)
+    this.horizontalLines = Array.from({ length: boxes }, () => Array(boxes + 1).fill(false));
+    
+    // ===== خطوط عمودی: (boxes + 1) ردیف × boxes ستون =====
+    // ردیف‌ها: 0 تا boxes (تعداد boxes+1 ردیف)
+    // ستون‌ها: 0 تا boxes-1 (تعداد boxes ستون)
+    this.verticalLines = Array.from({ length: boxes + 1 }, () => Array(boxes).fill(false));
+    
+    // ===== مربع‌ها: boxes × boxes =====
     this.boxes = Array.from({ length: boxes }, () => Array(boxes).fill(0));
     this.scores = Array(this.numPlayers).fill(0);
     this.currentPlayer = 0;
@@ -28,18 +34,18 @@ export class GameLogic {
     if (this.gameOver) return { success: false, reason: 'game_over' };
     if (player !== this.currentPlayer) return { success: false, reason: 'wrong_turn' };
 
-    const boxes = this.gridSize;      // تعداد مربع‌ها
+    const boxes = this.gridSize - 1;      // تعداد مربع‌ها
     
     if (isHorizontal) {
-      // ردیف: 0 تا boxes-1، ستون: 0 تا boxes-1
-      if (row < 0 || row >= boxes || col < 0 || col >= boxes)
+      // ردیف: 0 تا boxes-1، ستون: 0 تا boxes
+      if (row < 0 || row >= boxes || col < 0 || col >= boxes + 1)
         return { success: false, reason: 'invalid_position' };
       if (this.horizontalLines[row][col])
         return { success: false, reason: 'already_drawn' };
       this.horizontalLines[row][col] = true;
     } else {
-      // ردیف: 0 تا boxes-1، ستون: 0 تا boxes-1
-      if (row < 0 || row >= boxes || col < 0 || col >= boxes)
+      // ردیف: 0 تا boxes، ستون: 0 تا boxes-1
+      if (row < 0 || row >= boxes + 1 || col < 0 || col >= boxes)
         return { success: false, reason: 'invalid_position' };
       if (this.verticalLines[row][col])
         return { success: false, reason: 'already_drawn' };
@@ -70,16 +76,21 @@ export class GameLogic {
 
   checkAndFillBoxes(row, col, isHorizontal, player) {
     const filledBoxes = [];
-    const boxes = this.gridSize;      // تعداد مربع‌ها
+    const boxes = this.gridSize - 1;      // تعداد مربع‌ها
     
     const checkBox = (r, c) => {
       if (r < 0 || r >= boxes || c < 0 || c >= boxes) return false;
       if (this.boxes[r][c] !== 0) return false;
       
+      // چهار ضلع مربع:
+      // بالا: horizontalLines[r][c]
+      // پایین: horizontalLines[r+1][c]
+      // چپ: verticalLines[r][c]
+      // راست: verticalLines[r][c+1]
       const top = this.horizontalLines[r]?.[c] || false;
       const bottom = (r + 1 < boxes) ? this.horizontalLines[r + 1]?.[c] || false : false;
       const left = this.verticalLines[r]?.[c] || false;
-      const right = (c + 1 < boxes) ? this.verticalLines[r]?.[c + 1] || false : false;
+      const right = this.verticalLines[r]?.[c + 1] || false;
       
       if (top && bottom && left && right) {
         this.boxes[r][c] = player;
@@ -91,9 +102,11 @@ export class GameLogic {
     };
 
     if (isHorizontal) {
+      // خط افقی: بررسی مربع بالا و پایین
       if (row > 0) checkBox(row - 1, col);
       if (row < boxes) checkBox(row, col);
     } else {
+      // خط عمودی: بررسی مربع چپ و راست
       if (col > 0) checkBox(row, col - 1);
       if (col < boxes) checkBox(row, col);
     }
@@ -102,7 +115,7 @@ export class GameLogic {
   }
 
   checkGameOver() {
-    const boxes = this.gridSize;
+    const boxes = this.gridSize - 1;
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < boxes; c++) {
         if (this.boxes[r][c] === 0) return false;
@@ -121,19 +134,19 @@ export class GameLogic {
   getAIMove(player) {
     if (this.currentPlayer !== player) return null;
     
-    const boxes = this.gridSize;
+    const boxes = this.gridSize - 1;
     const allMoves = [];
     
-    // خطوط افقی: boxes ردیف × boxes ستون
+    // خطوط افقی: boxes ردیف × (boxes + 1) ستون
     for (let r = 0; r < boxes; r++) {
-      for (let c = 0; c < boxes; c++) {
+      for (let c = 0; c < boxes + 1; c++) {
         if (!this.horizontalLines[r][c]) {
           allMoves.push({ row: r, col: c, isHorizontal: true });
         }
       }
     }
-    // خطوط عمودی: boxes ردیف × boxes ستون
-    for (let r = 0; r < boxes; r++) {
+    // خطوط عمودی: (boxes + 1) ردیف × boxes ستون
+    for (let r = 0; r < boxes + 1; r++) {
       for (let c = 0; c < boxes; c++) {
         if (!this.verticalLines[r][c]) {
           allMoves.push({ row: r, col: c, isHorizontal: false });
@@ -160,14 +173,14 @@ export class GameLogic {
       
       const opponent = (player + 1) % this.numPlayers;
       for (let r = 0; r < boxes; r++) {
-        for (let c = 0; c < boxes; c++) {
+        for (let c = 0; c < boxes + 1; c++) {
           if (!this.horizontalLines[r][c]) {
             const oppFilled = this.simulateMove(r, c, true, opponent + 1);
             opponentThreat += oppFilled.length;
           }
         }
       }
-      for (let r = 0; r < boxes; r++) {
+      for (let r = 0; r < boxes + 1; r++) {
         for (let c = 0; c < boxes; c++) {
           if (!this.verticalLines[r][c]) {
             const oppFilled = this.simulateMove(r, c, false, opponent + 1);
@@ -210,7 +223,7 @@ export class GameLogic {
     }
     
     const filled = [];
-    const boxes = this.gridSize;
+    const boxes = this.gridSize - 1;
     
     const checkBox = (r, c) => {
       if (r < 0 || r >= boxes || c < 0 || c >= boxes) return;
@@ -218,7 +231,7 @@ export class GameLogic {
       const top = this.horizontalLines[r]?.[c] || false;
       const bottom = (r + 1 < boxes) ? this.horizontalLines[r + 1]?.[c] || false : false;
       const left = this.verticalLines[r]?.[c] || false;
-      const right = (c + 1 < boxes) ? this.verticalLines[r]?.[c + 1] || false : false;
+      const right = this.verticalLines[r]?.[c + 1] || false;
       if (top && bottom && left && right) {
         this.boxes[r][c] = player;
         this.scores[player - 1]++;
@@ -243,14 +256,14 @@ export class GameLogic {
   }
 
   getRemainingMoves() {
-    const boxes = this.gridSize;
+    const boxes = this.gridSize - 1;
     let count = 0;
     for (let r = 0; r < boxes; r++) {
-      for (let c = 0; c < boxes; c++) {
+      for (let c = 0; c < boxes + 1; c++) {
         if (!this.horizontalLines[r][c]) count++;
       }
     }
-    for (let r = 0; r < boxes; r++) {
+    for (let r = 0; r < boxes + 1; r++) {
       for (let c = 0; c < boxes; c++) {
         if (!this.verticalLines[r][c]) count++;
       }
