@@ -12,11 +12,11 @@ export class GameLogic {
     const boxes = this.gridSize - 1;     // تعداد مربع‌ها = 3
     
     // ===== خطوط افقی: boxes ردیف × dots ستون =====
-    // مثال: 3 ردیف × 4 ستون
+    // هر خط افقی بین دو نقطه مجاور در یک سطر رسم می‌شود
     this.horizontalLines = Array.from({ length: boxes }, () => Array(dots).fill(false));
     
     // ===== خطوط عمودی: dots ردیف × boxes ستون =====
-    // مثال: 4 ردیف × 3 ستون
+    // هر خط عمودی بین دو نقطه مجاور در یک ستون رسم می‌شود
     this.verticalLines = Array.from({ length: dots }, () => Array(boxes).fill(false));
     
     // ===== مربع‌ها: boxes × boxes =====
@@ -26,6 +26,7 @@ export class GameLogic {
     this.gameOver = false;
     this.moveHistory = [];
     this.totalMoves = 0;
+    this.lastFilledBoxes = [];
   }
 
   makeMove(row, col, isHorizontal, player) {
@@ -35,15 +36,16 @@ export class GameLogic {
     const dots = this.gridSize;
     const boxes = this.gridSize - 1;
     
+    // ===== اعتبارسنجی موقعیت =====
     if (isHorizontal) {
-      // ردیف: 0 تا boxes-1 (0 تا 2)، ستون: 0 تا dots-1 (0 تا 3)
+      // خط افقی: ردیف 0 تا boxes-1، ستون 0 تا dots-1
       if (row < 0 || row >= boxes || col < 0 || col >= dots)
         return { success: false, reason: 'invalid_position' };
       if (this.horizontalLines[row][col])
         return { success: false, reason: 'already_drawn' };
       this.horizontalLines[row][col] = true;
     } else {
-      // ردیف: 0 تا dots-1 (0 تا 3)، ستون: 0 تا boxes-1 (0 تا 2)
+      // خط عمودی: ردیف 0 تا dots-1، ستون 0 تا boxes-1
       if (row < 0 || row >= dots || col < 0 || col >= boxes)
         return { success: false, reason: 'invalid_position' };
       if (this.verticalLines[row][col])
@@ -54,9 +56,14 @@ export class GameLogic {
     this.totalMoves++;
     this.moveHistory.push({ row, col, isHorizontal, player });
     
+    // ===== بررسی مربع‌های ساخته شده =====
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
     const filledCount = filledBoxes.length;
+    this.lastFilledBoxes = filledBoxes;
 
+    // ===== قانون جایزه (نوبت‌گیری) =====
+    // اگر مربعی ساخته شد، بازیکن دوباره حرکت می‌کند (نوبت عوض نمی‌شود)
+    // اگر مربعی ساخته نشد، نوبت به بازیکن بعدی می‌رود
     if (filledCount === 0) {
       this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
     }
@@ -81,6 +88,11 @@ export class GameLogic {
       if (r < 0 || r >= boxes || c < 0 || c >= boxes) return false;
       if (this.boxes[r][c] !== 0) return false;
       
+      // چهار ضلع مربع:
+      // بالا: horizontalLines[r][c]
+      // پایین: horizontalLines[r+1][c]
+      // چپ: verticalLines[r][c]
+      // راست: verticalLines[r][c+1]
       const top = this.horizontalLines[r]?.[c] || false;
       const bottom = (r + 1 < this.horizontalLines.length) ? this.horizontalLines[r + 1]?.[c] || false : false;
       const left = this.verticalLines[r]?.[c] || false;
@@ -95,11 +107,16 @@ export class GameLogic {
       return false;
     };
 
+    // بررسی مربع‌های مجاور خط رسم‌شده
     if (isHorizontal) {
+      // مربع بالا (اگر ردیف > 0)
       if (row > 0) checkBox(row - 1, col);
+      // مربع پایین (اگر ردیف < boxes-1)
       if (row < boxes) checkBox(row, col);
     } else {
+      // مربع چپ (اگر ستون > 0)
       if (col > 0) checkBox(row, col - 1);
+      // مربع راست (اگر ستون < boxes-1)
       if (col < boxes) checkBox(row, col);
     }
     
@@ -130,6 +147,7 @@ export class GameLogic {
     const boxes = this.gridSize - 1;
     const allMoves = [];
     
+    // ===== جمع‌آوری تمام حرکات ممکن =====
     // خطوط افقی: boxes ردیف × dots ستون
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < dots; c++) {
@@ -149,6 +167,7 @@ export class GameLogic {
 
     if (allMoves.length === 0) return null;
 
+    // ===== ارزیابی حرکات =====
     const evaluated = allMoves.map(move => {
       const myFilled = this.simulateMove(move.row, move.col, move.isHorizontal, player + 1);
       return {
@@ -157,6 +176,7 @@ export class GameLogic {
       };
     });
 
+    // ===== اولویت با حرکتی که بیشترین مربع را بسازد =====
     evaluated.sort((a, b) => b.myScore - a.myScore);
     
     const maxScore = evaluated[0]?.myScore || 0;
