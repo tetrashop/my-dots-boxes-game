@@ -24,11 +24,12 @@ export default function GameSettings({ onStartGame, isMobile = false }) {
         <div>
           <label style={{ fontWeight: '600', color: 'rgba(255,255,255,0.7)', display: 'block', marginBottom: '4px' }}>📐 اندازه شبکه</label>
           <select value={gridSize} onChange={(e) => setGridSize(Number(e.target.value))} style={{ padding: '8px 12px', borderRadius: '8px', border: '2px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: '14px', width: isMobile ? '100%' : 'auto' }}>
-            {[3,4,5,6,7,8].map(n => <option key={n} value={n}>{n}×{n}</option>)}
+            {[3,4,5,6,7,8].map(n => (
+              <option key={n} value={n}>
+                {n}×{n} نقطه → {(n-1)}×{(n-1)} = {(n-1)*(n-1)} مربع
+              </option>
+            ))}
           </select>
-          <small style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', display: 'block', marginTop: '4px' }}>
-            {gridSize}×{gridSize} نقطه ← {(gridSize-1)}×{(gridSize-1)} مربع
-          </small>
         </div>
         <div>
           <label style={{ fontWeight: '600', color: 'rgba(255,255,255,0.7)', display: 'block', marginBottom: '4px' }}>👥 تعداد بازیکنان</label>

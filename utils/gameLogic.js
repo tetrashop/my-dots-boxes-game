@@ -1,7 +1,7 @@
 export class GameLogic {
   constructor(gridSize = 4, numPlayers = 2) {
     // gridSize = تعداد نقاط در هر سطر/ستون (مثلاً 4 نقطه)
-    // تعداد مربع‌ها = gridSize - 1 (مثلاً 3 مربع)
+    // تعداد مربع‌ها = (gridSize - 1) × (gridSize - 1) = 3×3 = 9
     this.gridSize = gridSize;
     this.numPlayers = numPlayers;
     this.reset();
@@ -9,18 +9,20 @@ export class GameLogic {
 
   reset() {
     const dots = this.gridSize;          // تعداد نقاط = 4
-    const boxes = this.gridSize - 1;     // تعداد مربع‌ها = 3
+    const boxes = this.gridSize - 1;     // تعداد مربع‌ها در هر سطر/ستون = 3
     
     // ===== خطوط افقی: boxes ردیف × dots ستون =====
-    // هر خط افقی بین دو نقطه مجاور در یک سطر رسم می‌شود
+    // مثال: 3 ردیف × 4 ستون = 12 خط افقی
     this.horizontalLines = Array.from({ length: boxes }, () => Array(dots).fill(false));
     
     // ===== خطوط عمودی: dots ردیف × boxes ستون =====
-    // هر خط عمودی بین دو نقطه مجاور در یک ستون رسم می‌شود
+    // مثال: 4 ردیف × 3 ستون = 12 خط عمودی
     this.verticalLines = Array.from({ length: dots }, () => Array(boxes).fill(false));
     
     // ===== مربع‌ها: boxes × boxes =====
+    // مثال: 3 × 3 = 9 مربع
     this.boxes = Array.from({ length: boxes }, () => Array(boxes).fill(0));
+    
     this.scores = Array(this.numPlayers).fill(0);
     this.currentPlayer = 0;
     this.gameOver = false;
@@ -36,7 +38,7 @@ export class GameLogic {
     const dots = this.gridSize;
     const boxes = this.gridSize - 1;
     
-    // ===== اعتبارسنجی موقعیت =====
+    // ===== اعتبارسنجی حرکت =====
     if (isHorizontal) {
       // خط افقی: ردیف 0 تا boxes-1، ستون 0 تا dots-1
       if (row < 0 || row >= boxes || col < 0 || col >= dots)
@@ -61,9 +63,7 @@ export class GameLogic {
     const filledCount = filledBoxes.length;
     this.lastFilledBoxes = filledBoxes;
 
-    // ===== قانون جایزه (نوبت‌گیری) =====
-    // اگر مربعی ساخته شد، بازیکن دوباره حرکت می‌کند (نوبت عوض نمی‌شود)
-    // اگر مربعی ساخته نشد، نوبت به بازیکن بعدی می‌رود
+    // ===== قانون جایزه: اگر مربع ساخته شد، نوبت عوض نمی‌شود =====
     if (filledCount === 0) {
       this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
     }
@@ -109,14 +109,10 @@ export class GameLogic {
 
     // بررسی مربع‌های مجاور خط رسم‌شده
     if (isHorizontal) {
-      // مربع بالا (اگر ردیف > 0)
       if (row > 0) checkBox(row - 1, col);
-      // مربع پایین (اگر ردیف < boxes-1)
       if (row < boxes) checkBox(row, col);
     } else {
-      // مربع چپ (اگر ستون > 0)
       if (col > 0) checkBox(row, col - 1);
-      // مربع راست (اگر ستون < boxes-1)
       if (col < boxes) checkBox(row, col);
     }
     
@@ -147,7 +143,6 @@ export class GameLogic {
     const boxes = this.gridSize - 1;
     const allMoves = [];
     
-    // ===== جمع‌آوری تمام حرکات ممکن =====
     // خطوط افقی: boxes ردیف × dots ستون
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < dots; c++) {
@@ -167,7 +162,6 @@ export class GameLogic {
 
     if (allMoves.length === 0) return null;
 
-    // ===== ارزیابی حرکات =====
     const evaluated = allMoves.map(move => {
       const myFilled = this.simulateMove(move.row, move.col, move.isHorizontal, player + 1);
       return {
@@ -176,7 +170,6 @@ export class GameLogic {
       };
     });
 
-    // ===== اولویت با حرکتی که بیشترین مربع را بسازد =====
     evaluated.sort((a, b) => b.myScore - a.myScore);
     
     const maxScore = evaluated[0]?.myScore || 0;
