@@ -33,8 +33,6 @@ export default function GameBoard({
 
   const calculateDimensions = useCallback(() => {
     const { cellSize, padding } = getSizes();
-    // gridSize نقطه در هر ردیف/ستون
-    // تعداد مربع‌ها = gridSize - 1
     const totalSize = (gridSize - 1) * cellSize + padding * 2;
     return { cellSize, padding, totalSize };
   }, [gridSize, getSizes]);
@@ -72,7 +70,7 @@ export default function GameBoard({
     context.fillStyle = 'rgba(255,255,255,0.05)';
     context.fillRect(0, 0, totalSize, totalSize);
 
-    // ===== ۱. رسم نقاط (gridSize × gridSize) =====
+    // ===== نقاط =====
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
         const x = padding + c * cellSize;
@@ -96,20 +94,17 @@ export default function GameBoard({
       }
     }
 
-    // ===== ۲. رسم خطوط افقی (boxes ردیف × (boxes+1) ستون) =====
+    // ===== خطوط افقی =====
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < boxes + 1; c++) {
         if (game.horizontalLines && game.horizontalLines[r] && game.horizontalLines[r][c]) {
           const x1 = padding + c * cellSize;
           const y1 = padding + r * cellSize;
           const x2 = padding + (c + 1) * cellSize;
-          let player = 0;
-          if (game.boxes && game.boxes[r]) player = game.boxes[r][c] || 0;
-          if (player === 0 && game.boxes && game.boxes[r]) player = game.boxes[r][c] || 0;
           context.beginPath();
           context.moveTo(x1, y1);
           context.lineTo(x2, y1);
-          context.strokeStyle = player ? playerColors[player - 1] : 'rgba(255,255,255,0.2)';
+          context.strokeStyle = 'rgba(255,255,255,0.8)';
           context.lineWidth = 4;
           context.shadowColor = 'rgba(108, 92, 231, 0.3)';
           context.shadowBlur = 8;
@@ -119,7 +114,7 @@ export default function GameBoard({
       }
     }
 
-    // ===== ۳. رسم خطوط عمودی ((boxes+1) ردیف × boxes ستون) =====
+    // ===== خطوط عمودی =====
     for (let r = 0; r < boxes + 1; r++) {
       for (let c = 0; c < boxes; c++) {
         if (game.verticalLines && game.verticalLines[r] && game.verticalLines[r][c]) {
@@ -127,13 +122,10 @@ export default function GameBoard({
           const y1 = padding + r * cellSize;
           const x2 = x1;
           const y2 = padding + (r + 1) * cellSize;
-          let player = 0;
-          if (game.boxes && game.boxes[r]) player = game.boxes[r][c] || 0;
-          if (player === 0 && game.boxes && game.boxes[r] && game.boxes[r][c]) player = game.boxes[r][c] || 0;
           context.beginPath();
           context.moveTo(x1, y1);
           context.lineTo(x2, y2);
-          context.strokeStyle = player ? playerColors[player - 1] : 'rgba(255,255,255,0.2)';
+          context.strokeStyle = 'rgba(255,255,255,0.8)';
           context.lineWidth = 4;
           context.shadowColor = 'rgba(108, 92, 231, 0.3)';
           context.shadowBlur = 8;
@@ -143,7 +135,7 @@ export default function GameBoard({
       }
     }
 
-    // ===== ۴. خط پیشنهادی مربی =====
+    // ===== خط پیشنهادی مربی =====
     if (suggestedMove && blinkState) {
       const { row, col, isHorizontal } = suggestedMove;
       const color = '#FDCB6E';
@@ -195,7 +187,7 @@ export default function GameBoard({
       }
     }
 
-    // ===== ۵. خط موقت (در حال کشیدن) =====
+    // ===== خط موقت =====
     if (isDragging && startDot && currentDot) {
       const x1 = padding + startDot.col * cellSize;
       const y1 = padding + startDot.row * cellSize;
@@ -219,7 +211,7 @@ export default function GameBoard({
       context.shadowBlur = 0;
     }
 
-    // ===== ۶. مربع‌های پر شده (boxes × boxes) =====
+    // ===== مربع‌های پر شده =====
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < boxes; c++) {
         if (game.boxes && game.boxes[r] && game.boxes[r][c] && game.boxes[r][c] !== 0) {
@@ -244,7 +236,7 @@ export default function GameBoard({
     }
   };
 
-  // ===== توابع کمکی =====
+  // ===== توابع رویداد =====
   const getCanvasCoords = (clientX, clientY) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();

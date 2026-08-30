@@ -43,8 +43,7 @@ export default function Home() {
     });
     setRenderKey(prev => prev + 1);
     if (coachMode && !game.gameOver && game.currentPlayer === 0) {
-      const move = game.getAIMove(0);
-      setSuggestedMove(move);
+      setSuggestedMove(game.getAIMove(0));
     } else {
       setSuggestedMove(null);
     }
@@ -77,8 +76,7 @@ export default function Home() {
 
   useEffect(() => {
     if (game && coachMode && !game.gameOver && game.currentPlayer === 0) {
-      const move = game.getAIMove(0);
-      setSuggestedMove(move);
+      setSuggestedMove(game.getAIMove(0));
     } else {
       setSuggestedMove(null);
     }
@@ -95,7 +93,7 @@ export default function Home() {
       } else if (winner === -1) {
         auth.addScore(user.id, 2);
         setGameResult('draw');
-      } else if (winner !== null && winner !== undefined) {
+      } else if (winner === 1) {
         auth.addLoss(user.id);
         auth.addScore(user.id, 1);
         setGameResult('loss');
@@ -103,7 +101,7 @@ export default function Home() {
       const updated = auth.getUser(user.id);
       if (updated) setUser(updated);
     }
-  }, [game?.gameOver, user]);
+  }, [game?.gameOver]);
 
   const handleLogin = (loggedUser) => {
     setUser(loggedUser);
