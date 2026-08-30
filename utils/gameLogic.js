@@ -1,7 +1,7 @@
 export class GameLogic {
   constructor(gridSize = 4, numPlayers = 2) {
     // gridSize = تعداد نقاط در هر سطر/ستون (مثلاً 4 نقطه)
-    // تعداد مربع‌ها = (gridSize - 1) × (gridSize - 1) = 3×3 = 9
+    // تعداد مربع‌ها = (gridSize - 1)² = 9 مربع
     this.gridSize = gridSize;
     this.numPlayers = numPlayers;
     this.reset();
@@ -9,26 +9,26 @@ export class GameLogic {
 
   reset() {
     const dots = this.gridSize;          // تعداد نقاط = 4
-    const boxes = this.gridSize - 1;     // تعداد مربع‌ها در هر سطر/ستون = 3
+    const boxes = this.gridSize - 1;     // تعداد مربع‌ها در هر سطر = 3
+    const totalBoxes = boxes * boxes;    // مجموع مربع‌ها = 9
     
     // ===== خطوط افقی: boxes ردیف × dots ستون =====
-    // مثال: 3 ردیف × 4 ستون = 12 خط افقی
+    // هر خط افقی بین دو نقطه مجاور در یک سطر
     this.horizontalLines = Array.from({ length: boxes }, () => Array(dots).fill(false));
     
     // ===== خطوط عمودی: dots ردیف × boxes ستون =====
-    // مثال: 4 ردیف × 3 ستون = 12 خط عمودی
+    // هر خط عمودی بین دو نقطه مجاور در یک ستون
     this.verticalLines = Array.from({ length: dots }, () => Array(boxes).fill(false));
     
     // ===== مربع‌ها: boxes × boxes =====
-    // مثال: 3 × 3 = 9 مربع
     this.boxes = Array.from({ length: boxes }, () => Array(boxes).fill(0));
-    
     this.scores = Array(this.numPlayers).fill(0);
     this.currentPlayer = 0;
     this.gameOver = false;
     this.moveHistory = [];
     this.totalMoves = 0;
     this.lastFilledBoxes = [];
+    this.totalBoxes = totalBoxes;
   }
 
   makeMove(row, col, isHorizontal, player) {
@@ -38,7 +38,7 @@ export class GameLogic {
     const dots = this.gridSize;
     const boxes = this.gridSize - 1;
     
-    // ===== اعتبارسنجی حرکت =====
+    // ===== اعتبارسنجی دقیق موقعیت =====
     if (isHorizontal) {
       // خط افقی: ردیف 0 تا boxes-1، ستون 0 تا dots-1
       if (row < 0 || row >= boxes || col < 0 || col >= dots)
@@ -63,8 +63,12 @@ export class GameLogic {
     const filledCount = filledBoxes.length;
     this.lastFilledBoxes = filledBoxes;
 
-    // ===== قانون جایزه: اگر مربع ساخته شد، نوبت عوض نمی‌شود =====
-    if (filledCount === 0) {
+    // ===== قانون امتیازدهی و نوبت‌گیری =====
+    if (filledCount > 0) {
+      // اگر مربعی ساخته شد، امتیاز می‌گیرد و دوباره حرکت می‌کند
+      // هیچ امتیازی کسر نمی‌شود
+    } else {
+      // اگر مربعی ساخته نشد، نوبت به بازیکن بعدی می‌رود
       this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
     }
 
@@ -109,10 +113,14 @@ export class GameLogic {
 
     // بررسی مربع‌های مجاور خط رسم‌شده
     if (isHorizontal) {
+      // مربع بالا (اگر ردیف > 0)
       if (row > 0) checkBox(row - 1, col);
+      // مربع پایین (اگر ردیف < boxes-1)
       if (row < boxes) checkBox(row, col);
     } else {
+      // مربع چپ (اگر ستون > 0)
       if (col > 0) checkBox(row, col - 1);
+      // مربع راست (اگر ستون < boxes-1)
       if (col < boxes) checkBox(row, col);
     }
     
@@ -143,7 +151,7 @@ export class GameLogic {
     const boxes = this.gridSize - 1;
     const allMoves = [];
     
-    // خطوط افقی: boxes ردیف × dots ستون
+    // ===== جمع‌آوری تمام حرکات ممکن =====
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < dots; c++) {
         if (!this.horizontalLines[r][c]) {
@@ -151,7 +159,6 @@ export class GameLogic {
         }
       }
     }
-    // خطوط عمودی: dots ردیف × boxes ستون
     for (let r = 0; r < dots; r++) {
       for (let c = 0; c < boxes; c++) {
         if (!this.verticalLines[r][c]) {
@@ -162,6 +169,7 @@ export class GameLogic {
 
     if (allMoves.length === 0) return null;
 
+    // ===== ارزیابی حرکات =====
     const evaluated = allMoves.map(move => {
       const myFilled = this.simulateMove(move.row, move.col, move.isHorizontal, player + 1);
       return {
@@ -170,6 +178,7 @@ export class GameLogic {
       };
     });
 
+    // ===== اولویت با حرکتی که بیشترین مربع را بسازد =====
     evaluated.sort((a, b) => b.myScore - a.myScore);
     
     const maxScore = evaluated[0]?.myScore || 0;
@@ -220,6 +229,32 @@ export class GameLogic {
     this.scores = backupS;
     
     return filled;
+  }
+
+  // ===== تشخیص خطاهای هوش مصنوعی =====
+  detectError(move, player) {
+    const dots = this.gridSize;
+    const boxes = this.gridSize - 1;
+    
+    if (move.isHorizontal) {
+      if (move.row < 0 || move.row >= boxes || move.col < 0 || move.col >= dots)
+        return { error: true, reason: 'invalid_position' };
+      if (this.horizontalLines[move.row][move.col])
+        return { error: true, reason: 'already_drawn' };
+    } else {
+      if (move.row < 0 || move.row >= dots || move.col < 0 || move.col >= boxes)
+        return { error: true, reason: 'invalid_position' };
+      if (this.verticalLines[move.row][move.col])
+        return { error: true, reason: 'already_drawn' };
+    }
+    
+    return { error: false };
+  }
+
+  // ===== کسر امتیاز برای حرکات اشتباه =====
+  penalizePlayer(player) {
+    if (player < 0 || player >= this.numPlayers) return;
+    this.scores[player] = Math.max(0, this.scores[player] - 1);
   }
 
   getRemainingMoves() {
