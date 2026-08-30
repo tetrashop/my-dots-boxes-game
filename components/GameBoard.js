@@ -65,8 +65,8 @@ export default function GameBoard({
     if (!game) return;
     const { cellSize, padding, totalSize } = dims;
     const { dotRadius } = getSizes();
-    const gridSize = game.gridSize;  // تعداد نقاط در هر ردیف/ستون
-    const boxes = gridSize - 1;      // تعداد مربع‌ها در هر ردیف/ستون
+    const gridSize = game.gridSize;
+    const boxes = gridSize - 1;
     
     context.clearRect(0, 0, totalSize, totalSize);
     context.fillStyle = 'rgba(255,255,255,0.05)';

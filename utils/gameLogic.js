@@ -1,15 +1,15 @@
 export class GameLogic {
   constructor(gridSize = 4, numPlayers = 2) {
-    // gridSize = تعداد نقاط در هر ردیف/ستون (مثلاً ۴ نقطه)
-    // تعداد مربع‌ها = gridSize - 1 (مثلاً ۳ مربع)
+    // gridSize = تعداد نقاط در هر ردیف/ستون
+    // تعداد مربع‌ها = gridSize - 1
     this.gridSize = gridSize;
     this.numPlayers = numPlayers;
     this.reset();
   }
 
   reset() {
-    const points = this.gridSize;           // تعداد نقاط = gridSize
-    const boxes = this.gridSize - 1;        // تعداد مربع‌ها = gridSize - 1
+    const points = this.gridSize;           // تعداد نقاط
+    const boxes = this.gridSize - 1;        // تعداد مربع‌ها
     
     // ===== خطوط افقی: boxes ردیف × (boxes + 1) ستون =====
     // ردیف‌ها: 0 تا boxes-1 (تعداد boxes ردیف)
@@ -76,7 +76,7 @@ export class GameLogic {
 
   checkAndFillBoxes(row, col, isHorizontal, player) {
     const filledBoxes = [];
-    const boxes = this.gridSize - 1;      // تعداد مربع‌ها
+    const boxes = this.gridSize - 1;
     
     const checkBox = (r, c) => {
       if (r < 0 || r >= boxes || c < 0 || c >= boxes) return false;
@@ -88,7 +88,7 @@ export class GameLogic {
       // چپ: verticalLines[r][c]
       // راست: verticalLines[r][c+1]
       const top = this.horizontalLines[r]?.[c] || false;
-      const bottom = (r + 1 < boxes) ? this.horizontalLines[r + 1]?.[c] || false : false;
+      const bottom = (r + 1 < this.horizontalLines.length) ? this.horizontalLines[r + 1]?.[c] || false : false;
       const left = this.verticalLines[r]?.[c] || false;
       const right = this.verticalLines[r]?.[c + 1] || false;
       
@@ -229,7 +229,7 @@ export class GameLogic {
       if (r < 0 || r >= boxes || c < 0 || c >= boxes) return;
       if (this.boxes[r][c] !== 0) return;
       const top = this.horizontalLines[r]?.[c] || false;
-      const bottom = (r + 1 < boxes) ? this.horizontalLines[r + 1]?.[c] || false : false;
+      const bottom = (r + 1 < this.horizontalLines.length) ? this.horizontalLines[r + 1]?.[c] || false : false;
       const left = this.verticalLines[r]?.[c] || false;
       const right = this.verticalLines[r]?.[c + 1] || false;
       if (top && bottom && left && right) {
