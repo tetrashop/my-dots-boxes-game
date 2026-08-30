@@ -1,7 +1,7 @@
 export class GameLogic {
   constructor(gridSize = 4, numPlayers = 2) {
     // gridSize = تعداد نقاط در هر ردیف/ستون (مثلاً ۴ نقطه)
-    // تعداد مربع‌ها = gridSize - 1 (مثلاً ۳ مربع)
+    // تعداد مربع‌ها = gridSize (مثلاً ۴ مربع)
     this.gridSize = gridSize;
     this.numPlayers = numPlayers;
     this.reset();
@@ -9,11 +9,11 @@ export class GameLogic {
 
   reset() {
     const dots = this.gridSize;           // تعداد نقاط = gridSize
-    const boxes = this.gridSize - 1;      // تعداد مربع‌ها = gridSize - 1
+    const boxes = this.gridSize;          // تعداد مربع‌ها = gridSize
     
-    // خطوط افقی: boxes ردیف × boxes ستون
+    // خطوط افقی: boxes ردیف × (boxes) ستون (بین نقاط)
     this.horizontalLines = Array.from({ length: boxes }, () => Array(boxes).fill(false));
-    // خطوط عمودی: boxes ردیف × boxes ستون
+    // خطوط عمودی: boxes ردیف × boxes ستون (بین نقاط)
     this.verticalLines = Array.from({ length: boxes }, () => Array(boxes).fill(false));
     // مربع‌ها: boxes × boxes
     this.boxes = Array.from({ length: boxes }, () => Array(boxes).fill(0));
@@ -28,18 +28,18 @@ export class GameLogic {
     if (this.gameOver) return { success: false, reason: 'game_over' };
     if (player !== this.currentPlayer) return { success: false, reason: 'wrong_turn' };
 
-    const boxes = this.gridSize - 1;      // تعداد مربع‌ها
+    const boxes = this.gridSize;      // تعداد مربع‌ها
     
     if (isHorizontal) {
-      // ردیف: 0 تا boxes-1، ستون: 0 تا boxes-2
-      if (row < 0 || row >= boxes || col < 0 || col >= boxes - 1)
+      // ردیف: 0 تا boxes-1، ستون: 0 تا boxes-1
+      if (row < 0 || row >= boxes || col < 0 || col >= boxes)
         return { success: false, reason: 'invalid_position' };
       if (this.horizontalLines[row][col])
         return { success: false, reason: 'already_drawn' };
       this.horizontalLines[row][col] = true;
     } else {
-      // ردیف: 0 تا boxes-2، ستون: 0 تا boxes-1
-      if (row < 0 || row >= boxes - 1 || col < 0 || col >= boxes)
+      // ردیف: 0 تا boxes-1، ستون: 0 تا boxes-1
+      if (row < 0 || row >= boxes || col < 0 || col >= boxes)
         return { success: false, reason: 'invalid_position' };
       if (this.verticalLines[row][col])
         return { success: false, reason: 'already_drawn' };
@@ -70,7 +70,7 @@ export class GameLogic {
 
   checkAndFillBoxes(row, col, isHorizontal, player) {
     const filledBoxes = [];
-    const boxes = this.gridSize - 1;      // تعداد مربع‌ها
+    const boxes = this.gridSize;      // تعداد مربع‌ها
     
     const checkBox = (r, c) => {
       if (r < 0 || r >= boxes || c < 0 || c >= boxes) return false;
@@ -102,7 +102,7 @@ export class GameLogic {
   }
 
   checkGameOver() {
-    const boxes = this.gridSize - 1;
+    const boxes = this.gridSize;
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < boxes; c++) {
         if (this.boxes[r][c] === 0) return false;
@@ -121,19 +121,19 @@ export class GameLogic {
   getAIMove(player) {
     if (this.currentPlayer !== player) return null;
     
-    const boxes = this.gridSize - 1;
+    const boxes = this.gridSize;
     const allMoves = [];
     
-    // خطوط افقی: boxes ردیف × (boxes-1) ستون
+    // خطوط افقی: boxes ردیف × boxes ستون
     for (let r = 0; r < boxes; r++) {
-      for (let c = 0; c < boxes - 1; c++) {
+      for (let c = 0; c < boxes; c++) {
         if (!this.horizontalLines[r][c]) {
           allMoves.push({ row: r, col: c, isHorizontal: true });
         }
       }
     }
-    // خطوط عمودی: (boxes-1) ردیف × boxes ستون
-    for (let r = 0; r < boxes - 1; r++) {
+    // خطوط عمودی: boxes ردیف × boxes ستون
+    for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < boxes; c++) {
         if (!this.verticalLines[r][c]) {
           allMoves.push({ row: r, col: c, isHorizontal: false });
@@ -160,14 +160,14 @@ export class GameLogic {
       
       const opponent = (player + 1) % this.numPlayers;
       for (let r = 0; r < boxes; r++) {
-        for (let c = 0; c < boxes - 1; c++) {
+        for (let c = 0; c < boxes; c++) {
           if (!this.horizontalLines[r][c]) {
             const oppFilled = this.simulateMove(r, c, true, opponent + 1);
             opponentThreat += oppFilled.length;
           }
         }
       }
-      for (let r = 0; r < boxes - 1; r++) {
+      for (let r = 0; r < boxes; r++) {
         for (let c = 0; c < boxes; c++) {
           if (!this.verticalLines[r][c]) {
             const oppFilled = this.simulateMove(r, c, false, opponent + 1);
@@ -210,7 +210,7 @@ export class GameLogic {
     }
     
     const filled = [];
-    const boxes = this.gridSize - 1;
+    const boxes = this.gridSize;
     
     const checkBox = (r, c) => {
       if (r < 0 || r >= boxes || c < 0 || c >= boxes) return;
@@ -243,14 +243,14 @@ export class GameLogic {
   }
 
   getRemainingMoves() {
-    const boxes = this.gridSize - 1;
+    const boxes = this.gridSize;
     let count = 0;
     for (let r = 0; r < boxes; r++) {
-      for (let c = 0; c < boxes - 1; c++) {
+      for (let c = 0; c < boxes; c++) {
         if (!this.horizontalLines[r][c]) count++;
       }
     }
-    for (let r = 0; r < boxes - 1; r++) {
+    for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < boxes; c++) {
         if (!this.verticalLines[r][c]) count++;
       }
