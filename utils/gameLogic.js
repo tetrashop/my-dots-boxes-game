@@ -19,37 +19,18 @@ export class GameLogic {
     this.totalMoves = 0;
     this.totalBoxes = boxes * boxes;
     
-    // حافظه هوش مصنوعی
     this.aiMemory = [];
     this.aiLearningRate = 0.1;
     this.aiDiscountFactor = 0.9;
     this.aiExplorationRate = 0.2;
   }
 
-  // ===== محاسبه درجه یک رأس =====
-  getDegree(row, col) {
-    let degree = 0;
-    const dots = this.gridSize;
-    const boxes = this.gridSize - 1;
-    
-    // بررسی خط افقی چپ
-    if (col > 0 && this.horizontalLines[row]?.[col - 1]) degree++;
-    // بررسی خط افقی راست
-    if (col < dots - 1 && this.horizontalLines[row]?.[col]) degree++;
-    // بررسی خط عمودی بالا
-    if (row > 0 && this.verticalLines[row - 1]?.[col]) degree++;
-    // بررسی خط عمودی پایین
-    if (row < dots - 1 && this.verticalLines[row]?.[col]) degree++;
-    
-    return degree;
-  }
-
-  // ===== اعتبارسنجی حرکت (بر اساس قانون جدید) =====
+  // ===== اعتبارسنجی حرکت (قانون ساده) =====
   validateMove(row, col, isHorizontal) {
     const dots = this.gridSize;
     const boxes = this.gridSize - 1;
     
-    // ===== ۱. بررسی محدوده =====
+    // بررسی محدوده
     if (isHorizontal) {
       if (row < 0 || row >= boxes || col < 0 || col >= dots)
         return { valid: false, reason: 'invalid_position' };
@@ -62,26 +43,9 @@ export class GameLogic {
         return { valid: false, reason: 'already_drawn' };
     }
 
-    // ===== ۲. بررسی درجه رأس‌ها (قانون جدید) =====
-    // دو رأس مجاور را پیدا کن
-    let r1, c1, r2, c2;
-    if (isHorizontal) {
-      r1 = row; c1 = col;
-      r2 = row; c2 = col + 1;
-    } else {
-      r1 = row; c1 = col;
-      r2 = row + 1; c2 = col;
-    }
-
-    // درجه دو رأس
-    const deg1 = this.getDegree(r1, c1);
-    const deg2 = this.getDegree(r2, c2);
-
-    // قانون جدید: حرکت مجاز است اگر:
-    // ۱. یال بین دو رأس وجود نداشته باشد (قبلاً بررسی شد)
-    // ۲. رأس‌ها مجاور باشند (با توجه به isHorizontal، مجاور هستند)
-    // ۳. درجه هر دو رأس می‌تواند هر مقداری داشته باشد، هیچ محدودیتی نیست!
-    // فقط شرط نبودن یال کافی است
+    // ===== قانون اصلی: فقط نبودن یال کافی است =====
+    // مجاور بودن با توجه به isHorizontal تضمین شده است
+    // درجه رأس‌ها بررسی نمی‌شود
 
     return { valid: true };
   }
@@ -97,7 +61,6 @@ export class GameLogic {
       return { success: false, reason: validation.reason };
     }
 
-    // ===== ثبت حرکت =====
     if (isHorizontal) {
       this.horizontalLines[row][col] = true;
     } else {
@@ -110,9 +73,7 @@ export class GameLogic {
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
     const filledCount = filledBoxes.length;
 
-    // ===== نوبت بعدی =====
     this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
-
     this.gameOver = this.checkGameOver();
 
     return {
@@ -125,13 +86,11 @@ export class GameLogic {
     };
   }
 
-  // ===== کسر امتیاز =====
   penalizePlayer(player) {
     if (player < 0 || player >= this.numPlayers) return;
     this.scores[player] = Math.max(0, this.scores[player] - 1);
   }
 
-  // ===== بررسی مربع‌ها =====
   checkAndFillBoxes(row, col, isHorizontal, player) {
     const filledBoxes = [];
     const boxes = this.gridSize - 1;
@@ -209,31 +168,17 @@ export class GameLogic {
 
     const evaluated = allMoves.map(move => {
       const myFilled = this.simulateMove(move.row, move.col, move.isHorizontal, player + 1);
-      
-      // محاسبه درجه‌های رأس‌ها برای ارزیابی بهتر
-      let degreeScore = 0;
-      if (move.isHorizontal) {
-        degreeScore += this.getDegree(move.row, move.col);
-        degreeScore += this.getDegree(move.row, move.col + 1);
-      } else {
-        degreeScore += this.getDegree(move.row, move.col);
-        degreeScore += this.getDegree(move.row + 1, move.col);
-      }
-      
       return {
         ...move,
-        myScore: myFilled.length,
-        degreeScore: degreeScore
+        myScore: myFilled.length
       };
     });
 
-    // اولویت: مربع‌سازی > درجه رأس‌ها
-    evaluated.sort((a, b) => {
-      if (b.myScore !== a.myScore) return b.myScore - a.myScore;
-      return b.degreeScore - a.degreeScore;
-    });
+    evaluated.sort((a, b) => b.myScore - a.myScore);
     
-    return evaluated[0] || allMoves[0];
+    const maxScore = evaluated[0]?.myScore || 0;
+    const bestMoves = evaluated.filter(m => m.myScore === maxScore);
+    return bestMoves[Math.floor(Math.random() * bestMoves.length)] || allMoves[0];
   }
 
   simulateMove(row, col, isHorizontal, player) {
