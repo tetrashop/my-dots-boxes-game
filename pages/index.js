@@ -49,7 +49,6 @@ export default function Home() {
     }
   }, [game, coachMode]);
 
-  // ===== هوش مصنوعی =====
   const makeAIMove = useCallback(() => {
     if (!game || game.gameOver || game.currentPlayer === 0 || isAIThinking) return;
     if (coachMode) return;
@@ -62,7 +61,6 @@ export default function Home() {
       if (move) {
         const result = game.makeMove(move.row, move.col, move.isHorizontal, game.currentPlayer);
         updateGameState();
-        // نوبت به بازیکن بعدی می‌رود (حتی اگر مربع ساخته شود)
         if (!result.gameOver && game.currentPlayer !== 0 && !coachMode) {
           makeAIMove();
         }
@@ -85,7 +83,6 @@ export default function Home() {
     }
   }, [game, coachMode, game?.currentPlayer, game?.gameOver]);
 
-  // ===== مدیریت نتیجه بازی =====
   useEffect(() => {
     if (game && game.gameOver && user) {
       const winner = game.getWinner();
@@ -136,14 +133,17 @@ export default function Home() {
   };
 
   const handlePlayerMove = (row, col, isHorizontal) => {
-    if (!game || game.gameOver || game.currentPlayer !== 0 || isAIThinking) return;
+    console.log('🎮 حرکت بازیکن:', { row, col, isHorizontal });
+    if (!game || game.gameOver || game.currentPlayer !== 0 || isAIThinking) {
+      console.log('⛔ حرکت غیرمجاز');
+      return;
+    }
     const result = game.makeMove(row, col, isHorizontal, 0);
+    console.log('📊 نتیجه:', result);
     if (result.success) {
       updateGameState();
-      // نوبت به بازیکن بعدی می‌رود
     } else {
-      // نمایش خطا به کاربر
-      alert('حرکت نامعتبر: ' + result.reason);
+      alert('خطا: ' + result.reason);
     }
   };
 

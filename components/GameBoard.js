@@ -96,7 +96,7 @@ export default function GameBoard({
       }
     }
 
-    // ===== ۲. خطوط افقی (فقط بین نقاط مجاور) =====
+    // ===== ۲. خطوط افقی (boxes × dots) =====
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < dots; c++) {
         if (game.horizontalLines && game.horizontalLines[r] && game.horizontalLines[r][c]) {
@@ -116,7 +116,7 @@ export default function GameBoard({
       }
     }
 
-    // ===== ۳. خطوط عمودی (فقط بین نقاط مجاور) =====
+    // ===== ۳. خطوط عمودی (dots × boxes) =====
     for (let r = 0; r < dots; r++) {
       for (let c = 0; c < boxes; c++) {
         if (game.verticalLines && game.verticalLines[r] && game.verticalLines[r][c]) {
@@ -175,14 +175,19 @@ export default function GameBoard({
     const { cellSize, padding } = dimensions;
     const gridSize = game.gridSize;
     const dots = gridSize;
-    const threshold = 25;
-    let minDist = threshold, nearest = null;
+    const threshold = 30;
+    let minDist = threshold;
+    let nearest = null;
+    
     for (let r = 0; r < dots; r++) {
       for (let c = 0; c < dots; c++) {
         const dotX = padding + c * cellSize;
         const dotY = padding + r * cellSize;
         const dist = Math.hypot(x - dotX, y - dotY);
-        if (dist < minDist) { minDist = dist; nearest = { row: r, col: c }; }
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = { row: r, col: c };
+        }
       }
     }
     return nearest;
@@ -190,13 +195,16 @@ export default function GameBoard({
 
   const isValidLine = (dot1, dot2) => {
     if (!dot1 || !dot2) return false;
-    const dr = Math.abs(dot1.row - dot2.row), dc = Math.abs(dot1.col - dot2.col);
+    const dr = Math.abs(dot1.row - dot2.row);
+    const dc = Math.abs(dot1.col - dot2.col);
+    // مجاور: (0,1) یا (1,0)
     return (dr === 0 && dc === 1) || (dr === 1 && dc === 0);
   };
 
   const getLineData = (dot1, dot2) => {
     if (!isValidLine(dot1, dot2)) return null;
-    const row = Math.min(dot1.row, dot2.row), col = Math.min(dot1.col, dot2.col);
+    const row = Math.min(dot1.row, dot2.row);
+    const col = Math.min(dot1.col, dot2.col);
     const isHorizontal = (dot1.row === dot2.row);
     return { row, col, isHorizontal };
   };
@@ -209,12 +217,25 @@ export default function GameBoard({
     return game.verticalLines && game.verticalLines[line.row] && game.verticalLines[line.row][line.col] || false;
   };
 
+  // ===== رویدادها (با دیباگ) =====
   const handlePointerDown = (e) => {
     e.preventDefault();
-    if (game.gameOver || game.currentPlayer !== 0) return;
+    console.log('🖱️ Pointer Down');
+    if (game.gameOver || game.currentPlayer !== 0) {
+      console.log('⛔ بازی تمام شده یا نوبت شما نیست');
+      return;
+    }
     const coords = getCanvasCoords(e.clientX, e.clientY);
+    console.log('📍 مختصات:', coords);
     const dot = findNearestDot(coords.x, coords.y);
-    if (dot) { setStartDot(dot); setCurrentDot(dot); setIsDragging(true); }
+    if (dot) {
+      console.log('🎯 نقطه انتخاب شد:', dot);
+      setStartDot(dot);
+      setCurrentDot(dot);
+      setIsDragging(true);
+    } else {
+      console.log('❌ هیچ نقطه‌ای پیدا نشد');
+    }
   };
 
   const handlePointerMove = (e) => {
@@ -222,28 +243,48 @@ export default function GameBoard({
     const coords = getCanvasCoords(e.clientX, e.clientY);
     const dot = findNearestDot(coords.x, coords.y);
     setCurrentDot(dot);
-    if (isDragging && ctx) { const dims = calculateDimensions(); drawBoard(ctx, dims); }
+    if (isDragging && ctx) {
+      const dims = calculateDimensions();
+      drawBoard(ctx, dims);
+    }
   };
 
   const handlePointerUp = (e) => {
     e.preventDefault();
-    if (!isDragging || !startDot) { resetDragState(); return; }
+    console.log('🖱️ Pointer Up');
+    if (!isDragging || !startDot) {
+      resetDragState();
+      return;
+    }
     const coords = getCanvasCoords(e.clientX, e.clientY);
     const endDot = findNearestDot(coords.x, coords.y);
+    console.log('📍 نقطه پایان:', endDot);
+    
     if (endDot && startDot) {
       const line = getLineData(startDot, endDot);
-      if (line && !isLineDrawn(line)) onMove(line.row, line.col, line.isHorizontal);
+      console.log('📏 خط پیدا شده:', line);
+      if (line && !isLineDrawn(line)) {
+        console.log('✅ ارسال حرکت به onMove');
+        onMove(line.row, line.col, line.isHorizontal);
+      } else {
+        console.log('❌ خط نامعتبر یا قبلاً رسم شده');
+      }
     }
     resetDragState();
   };
 
-  const handlePointerLeave = () => { if (isDragging) resetDragState(); };
+  const handlePointerLeave = () => {
+    if (isDragging) resetDragState();
+  };
 
   const resetDragState = () => {
     setIsDragging(false);
     setStartDot(null);
     setCurrentDot(null);
-    if (ctx) { const dims = calculateDimensions(); drawBoard(ctx, dims); }
+    if (ctx) {
+      const dims = calculateDimensions();
+      drawBoard(ctx, dims);
+    }
   };
 
   return (
@@ -270,7 +311,12 @@ export default function GameBoard({
         borderRadius: '12px',
         background: 'rgba(255,255,255,0.02)'
       }}
-        onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerLeave={handlePointerLeave} onPointerCancel={handlePointerUp} />
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerLeave}
+        onPointerCancel={handlePointerUp} />
+      
       {isDragging && <div style={{
         position: 'absolute',
         top: '12px',
@@ -290,6 +336,7 @@ export default function GameBoard({
       }}>
         {startDot && currentDot && isValidLine(startDot, currentDot) ? '✅ رها کنید تا خط رسم شود' : '📍 به نقطه مجاور بروید'}
       </div>}
+      
       {game.gameOver && <div style={{
         position: 'absolute',
         top: '50%',

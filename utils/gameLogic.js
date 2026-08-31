@@ -9,28 +9,24 @@ export class GameLogic {
     const dots = this.gridSize;
     const boxes = this.gridSize - 1;
     
+    // خطوط افقی: (boxes) ردیف × (dots) ستون
     this.horizontalLines = Array.from({ length: boxes }, () => Array(dots).fill(false));
+    // خطوط عمودی: (dots) ردیف × (boxes) ستون
     this.verticalLines = Array.from({ length: dots }, () => Array(boxes).fill(false));
+    // مربع‌ها: (boxes) × (boxes)
     this.boxes = Array.from({ length: boxes }, () => Array(boxes).fill(0));
     this.scores = Array(this.numPlayers).fill(0);
     this.currentPlayer = 0;
     this.gameOver = false;
     this.moveHistory = [];
     this.totalMoves = 0;
-    this.totalBoxes = boxes * boxes;
-    
-    this.aiMemory = [];
-    this.aiLearningRate = 0.1;
-    this.aiDiscountFactor = 0.9;
-    this.aiExplorationRate = 0.2;
   }
 
-  // ===== اعتبارسنجی حرکت (قانون ساده) =====
+  // ===== اعتبارسنجی حرکت =====
   validateMove(row, col, isHorizontal) {
     const dots = this.gridSize;
     const boxes = this.gridSize - 1;
     
-    // بررسی محدوده
     if (isHorizontal) {
       if (row < 0 || row >= boxes || col < 0 || col >= dots)
         return { valid: false, reason: 'invalid_position' };
@@ -42,11 +38,6 @@ export class GameLogic {
       if (this.verticalLines[row][col])
         return { valid: false, reason: 'already_drawn' };
     }
-
-    // ===== قانون اصلی: فقط نبودن یال کافی است =====
-    // مجاور بودن با توجه به isHorizontal تضمین شده است
-    // درجه رأس‌ها بررسی نمی‌شود
-
     return { valid: true };
   }
 
@@ -57,10 +48,10 @@ export class GameLogic {
 
     const validation = this.validateMove(row, col, isHorizontal);
     if (!validation.valid) {
-      this.penalizePlayer(player);
       return { success: false, reason: validation.reason };
     }
 
+    // ثبت خط
     if (isHorizontal) {
       this.horizontalLines[row][col] = true;
     } else {
@@ -70,9 +61,11 @@ export class GameLogic {
     this.totalMoves++;
     this.moveHistory.push({ row, col, isHorizontal, player });
     
+    // بررسی مربع‌ها
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
     const filledCount = filledBoxes.length;
 
+    // تغییر نوبت (حتی اگر مربع ساخته شود)
     this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
     this.gameOver = this.checkGameOver();
 
@@ -86,11 +79,7 @@ export class GameLogic {
     };
   }
 
-  penalizePlayer(player) {
-    if (player < 0 || player >= this.numPlayers) return;
-    this.scores[player] = Math.max(0, this.scores[player] - 1);
-  }
-
+  // ===== بررسی مربع‌ها =====
   checkAndFillBoxes(row, col, isHorizontal, player) {
     const filledBoxes = [];
     const boxes = this.gridSize - 1;
@@ -166,18 +155,16 @@ export class GameLogic {
 
     if (allMoves.length === 0) return null;
 
+    // ارزیابی: اولویت با حرکتی که مربع می‌سازد
     const evaluated = allMoves.map(move => {
-      const myFilled = this.simulateMove(move.row, move.col, move.isHorizontal, player + 1);
-      return {
-        ...move,
-        myScore: myFilled.length
-      };
+      const filled = this.simulateMove(move.row, move.col, move.isHorizontal, player + 1);
+      return { ...move, score: filled.length };
     });
 
-    evaluated.sort((a, b) => b.myScore - a.myScore);
+    evaluated.sort((a, b) => b.score - a.score);
+    const bestScore = evaluated[0]?.score || 0;
+    const bestMoves = evaluated.filter(m => m.score === bestScore);
     
-    const maxScore = evaluated[0]?.myScore || 0;
-    const bestMoves = evaluated.filter(m => m.myScore === maxScore);
     return bestMoves[Math.floor(Math.random() * bestMoves.length)] || allMoves[0];
   }
 
