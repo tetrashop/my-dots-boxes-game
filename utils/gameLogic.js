@@ -9,7 +9,6 @@ export class GameLogic {
     const dots = this.gridSize;
     const boxes = this.gridSize - 1;
     
-    // ===== ماتریس‌های بازی =====
     this.horizontalLines = Array.from({ length: boxes }, () => Array(dots).fill(false));
     this.verticalLines = Array.from({ length: dots }, () => Array(boxes).fill(false));
     this.boxes = Array.from({ length: boxes }, () => Array(boxes).fill(0));
@@ -20,11 +19,71 @@ export class GameLogic {
     this.totalMoves = 0;
     this.totalBoxes = boxes * boxes;
     
-    // ===== هوش مصنوعی =====
+    // حافظه هوش مصنوعی
     this.aiMemory = [];
     this.aiLearningRate = 0.1;
     this.aiDiscountFactor = 0.9;
     this.aiExplorationRate = 0.2;
+  }
+
+  // ===== محاسبه درجه یک رأس =====
+  getDegree(row, col) {
+    let degree = 0;
+    const dots = this.gridSize;
+    const boxes = this.gridSize - 1;
+    
+    // بررسی خط افقی چپ
+    if (col > 0 && this.horizontalLines[row]?.[col - 1]) degree++;
+    // بررسی خط افقی راست
+    if (col < dots - 1 && this.horizontalLines[row]?.[col]) degree++;
+    // بررسی خط عمودی بالا
+    if (row > 0 && this.verticalLines[row - 1]?.[col]) degree++;
+    // بررسی خط عمودی پایین
+    if (row < dots - 1 && this.verticalLines[row]?.[col]) degree++;
+    
+    return degree;
+  }
+
+  // ===== اعتبارسنجی حرکت (بر اساس قانون جدید) =====
+  validateMove(row, col, isHorizontal) {
+    const dots = this.gridSize;
+    const boxes = this.gridSize - 1;
+    
+    // ===== ۱. بررسی محدوده =====
+    if (isHorizontal) {
+      if (row < 0 || row >= boxes || col < 0 || col >= dots)
+        return { valid: false, reason: 'invalid_position' };
+      if (this.horizontalLines[row][col])
+        return { valid: false, reason: 'already_drawn' };
+    } else {
+      if (row < 0 || row >= dots || col < 0 || col >= boxes)
+        return { valid: false, reason: 'invalid_position' };
+      if (this.verticalLines[row][col])
+        return { valid: false, reason: 'already_drawn' };
+    }
+
+    // ===== ۲. بررسی درجه رأس‌ها (قانون جدید) =====
+    // دو رأس مجاور را پیدا کن
+    let r1, c1, r2, c2;
+    if (isHorizontal) {
+      r1 = row; c1 = col;
+      r2 = row; c2 = col + 1;
+    } else {
+      r1 = row; c1 = col;
+      r2 = row + 1; c2 = col;
+    }
+
+    // درجه دو رأس
+    const deg1 = this.getDegree(r1, c1);
+    const deg2 = this.getDegree(r2, c2);
+
+    // قانون جدید: حرکت مجاز است اگر:
+    // ۱. یال بین دو رأس وجود نداشته باشد (قبلاً بررسی شد)
+    // ۲. رأس‌ها مجاور باشند (با توجه به isHorizontal، مجاور هستند)
+    // ۳. درجه هر دو رأس می‌تواند هر مقداری داشته باشد، هیچ محدودیتی نیست!
+    // فقط شرط نبودن یال کافی است
+
+    return { valid: true };
   }
 
   // ===== حرکت اصلی =====
@@ -32,13 +91,8 @@ export class GameLogic {
     if (this.gameOver) return { success: false, reason: 'game_over' };
     if (player !== this.currentPlayer) return { success: false, reason: 'wrong_turn' };
 
-    const dots = this.gridSize;
-    const boxes = this.gridSize - 1;
-    
-    // ===== اعتبارسنجی =====
     const validation = this.validateMove(row, col, isHorizontal);
     if (!validation.valid) {
-      // کسر امتیاز برای حرکت اشتباه
       this.penalizePlayer(player);
       return { success: false, reason: validation.reason };
     }
@@ -53,11 +107,10 @@ export class GameLogic {
     this.totalMoves++;
     this.moveHistory.push({ row, col, isHorizontal, player });
     
-    // ===== بررسی مربع‌ها =====
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
     const filledCount = filledBoxes.length;
 
-    // ===== قانون نوبت‌گیری (حتی اگر مربع ساخته شود) =====
+    // ===== نوبت بعدی =====
     this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
 
     this.gameOver = this.checkGameOver();
@@ -72,26 +125,7 @@ export class GameLogic {
     };
   }
 
-  // ===== اعتبارسنجی حرکت =====
-  validateMove(row, col, isHorizontal) {
-    const dots = this.gridSize;
-    const boxes = this.gridSize - 1;
-    
-    if (isHorizontal) {
-      if (row < 0 || row >= boxes || col < 0 || col >= dots)
-        return { valid: false, reason: 'invalid_position' };
-      if (this.horizontalLines[row][col])
-        return { valid: false, reason: 'already_drawn' };
-    } else {
-      if (row < 0 || row >= dots || col < 0 || col >= boxes)
-        return { valid: false, reason: 'invalid_position' };
-      if (this.verticalLines[row][col])
-        return { valid: false, reason: 'already_drawn' };
-    }
-    return { valid: true };
-  }
-
-  // ===== کسر امتیاز برای حرکات اشتباه =====
+  // ===== کسر امتیاز =====
   penalizePlayer(player) {
     if (player < 0 || player >= this.numPlayers) return;
     this.scores[player] = Math.max(0, this.scores[player] - 1);
@@ -131,7 +165,24 @@ export class GameLogic {
     return filledBoxes;
   }
 
-  // ===== هوش مصنوعی Q-Learning =====
+  checkGameOver() {
+    const boxes = this.gridSize - 1;
+    for (let r = 0; r < boxes; r++) {
+      for (let c = 0; c < boxes; c++) {
+        if (this.boxes[r][c] === 0) return false;
+      }
+    }
+    return true;
+  }
+
+  getWinner() {
+    if (!this.gameOver) return null;
+    const maxScore = Math.max(...this.scores);
+    const winners = this.scores.map((s, i) => s === maxScore ? i : -1).filter(i => i >= 0);
+    return winners.length === 1 ? winners[0] : -1;
+  }
+
+  // ===== هوش مصنوعی =====
   getAIMove(player) {
     if (this.currentPlayer !== player) return null;
     
@@ -139,7 +190,6 @@ export class GameLogic {
     const boxes = this.gridSize - 1;
     const allMoves = [];
     
-    // ===== جمع‌آوری تمام حرکات ممکن =====
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < dots; c++) {
         if (!this.horizontalLines[r][c]) {
@@ -157,55 +207,35 @@ export class GameLogic {
 
     if (allMoves.length === 0) return null;
 
-    // ===== ارزیابی با Q-Learning =====
     const evaluated = allMoves.map(move => {
-      const moveKey = `${move.row},${move.col},${move.isHorizontal}`;
-      const existingQ = this.aiMemory.find(m => m.key === moveKey);
-      const qValue = existingQ ? existingQ.q : 0;
-      
       const myFilled = this.simulateMove(move.row, move.col, move.isHorizontal, player + 1);
       
-      // ===== ترکیب Q-Value و امتیاز مربع =====
-      const score = (qValue * this.aiLearningRate) + (myFilled.length * 10);
+      // محاسبه درجه‌های رأس‌ها برای ارزیابی بهتر
+      let degreeScore = 0;
+      if (move.isHorizontal) {
+        degreeScore += this.getDegree(move.row, move.col);
+        degreeScore += this.getDegree(move.row, move.col + 1);
+      } else {
+        degreeScore += this.getDegree(move.row, move.col);
+        degreeScore += this.getDegree(move.row + 1, move.col);
+      }
       
       return {
         ...move,
-        qValue,
-        score,
-        myFilled: myFilled.length
+        myScore: myFilled.length,
+        degreeScore: degreeScore
       };
     });
 
-    // ===== انتخاب با ε-greedy =====
-    const shouldExplore = Math.random() < this.aiExplorationRate;
+    // اولویت: مربع‌سازی > درجه رأس‌ها
+    evaluated.sort((a, b) => {
+      if (b.myScore !== a.myScore) return b.myScore - a.myScore;
+      return b.degreeScore - a.degreeScore;
+    });
     
-    if (shouldExplore) {
-      // حرکت تصادفی (اکتشاف)
-      return allMoves[Math.floor(Math.random() * allMoves.length)];
-    } else {
-      // بهترین حرکت (استخراج)
-      evaluated.sort((a, b) => b.score - a.score);
-      const bestMove = evaluated[0];
-      
-      // ===== به‌روزرسانی Q-Learning =====
-      if (bestMove) {
-        const moveKey = `${bestMove.row},${bestMove.col},${bestMove.isHorizontal}`;
-        const existing = this.aiMemory.find(m => m.key === moveKey);
-        const reward = bestMove.myFilled * 10 - 1;
-        const newQ = (existing ? existing.q : 0) + this.aiLearningRate * (reward + this.aiDiscountFactor * 0 - (existing ? existing.q : 0));
-        
-        if (existing) {
-          existing.q = newQ;
-        } else {
-          this.aiMemory.push({ key: moveKey, q: newQ });
-        }
-      }
-      
-      return bestMove || allMoves[0];
-    }
+    return evaluated[0] || allMoves[0];
   }
 
-  // ===== شبیه‌سازی حرکت =====
   simulateMove(row, col, isHorizontal, player) {
     const backupH = this.horizontalLines.map(row => [...row]);
     const backupV = this.verticalLines.map(row => [...row]);
@@ -249,23 +279,6 @@ export class GameLogic {
     this.scores = backupS;
     
     return filled;
-  }
-
-  checkGameOver() {
-    const boxes = this.gridSize - 1;
-    for (let r = 0; r < boxes; r++) {
-      for (let c = 0; c < boxes; c++) {
-        if (this.boxes[r][c] === 0) return false;
-      }
-    }
-    return true;
-  }
-
-  getWinner() {
-    if (!this.gameOver) return null;
-    const maxScore = Math.max(...this.scores);
-    const winners = this.scores.map((s, i) => s === maxScore ? i : -1).filter(i => i >= 0);
-    return winners.length === 1 ? winners[0] : -1;
   }
 
   getRemainingMoves() {
