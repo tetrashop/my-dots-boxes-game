@@ -33,7 +33,6 @@ export default function GameBoard({
 
   const calculateDimensions = useCallback(() => {
     const { cellSize, padding } = getSizes();
-    const dots = gridSize;
     const boxes = gridSize - 1;
     const totalSize = boxes * cellSize + padding * 2;
     return { cellSize, padding, totalSize };
@@ -73,7 +72,7 @@ export default function GameBoard({
     context.fillStyle = 'rgba(255,255,255,0.05)';
     context.fillRect(0, 0, totalSize, totalSize);
 
-    // ===== ۱. رسم نقاط (dots × dots) =====
+    // ===== ۱. نقاط =====
     for (let r = 0; r < dots; r++) {
       for (let c = 0; c < dots; c++) {
         const x = padding + c * cellSize;
@@ -97,7 +96,7 @@ export default function GameBoard({
       }
     }
 
-    // ===== ۲. رسم خطوط افقی (boxes × dots) =====
+    // ===== ۲. خطوط افقی (فقط بین نقاط مجاور) =====
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < dots; c++) {
         if (game.horizontalLines && game.horizontalLines[r] && game.horizontalLines[r][c]) {
@@ -117,7 +116,7 @@ export default function GameBoard({
       }
     }
 
-    // ===== ۳. رسم خطوط عمودی (dots × boxes) =====
+    // ===== ۳. خطوط عمودی (فقط بین نقاط مجاور) =====
     for (let r = 0; r < dots; r++) {
       for (let c = 0; c < boxes; c++) {
         if (game.verticalLines && game.verticalLines[r] && game.verticalLines[r][c]) {
@@ -138,83 +137,7 @@ export default function GameBoard({
       }
     }
 
-    // ===== ۴. خط پیشنهادی مربی =====
-    if (suggestedMove && blinkState) {
-      const { row, col, isHorizontal } = suggestedMove;
-      const color = '#FDCB6E';
-      if (isHorizontal) {
-        const x1 = padding + col * cellSize;
-        const y1 = padding + row * cellSize;
-        const x2 = padding + (col + 1) * cellSize;
-        context.shadowColor = 'rgba(253, 203, 110, 0.6)';
-        context.shadowBlur = 24;
-        context.beginPath();
-        context.moveTo(x1, y1);
-        context.lineTo(x2, y1);
-        context.strokeStyle = color;
-        context.lineWidth = 6;
-        context.lineCap = 'round';
-        context.setLineDash([8, 6]);
-        context.stroke();
-        context.setLineDash([]);
-        context.shadowBlur = 0;
-        context.fillStyle = color;
-        context.font = '16px sans-serif';
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.fillText('⬅️', x1, y1 - 14);
-        context.fillText('➡️', x2, y1 - 14);
-      } else {
-        const x1 = padding + col * cellSize;
-        const y1 = padding + row * cellSize;
-        const x2 = x1;
-        const y2 = padding + (row + 1) * cellSize;
-        context.shadowColor = 'rgba(253, 203, 110, 0.6)';
-        context.shadowBlur = 24;
-        context.beginPath();
-        context.moveTo(x1, y1);
-        context.lineTo(x2, y2);
-        context.strokeStyle = color;
-        context.lineWidth = 6;
-        context.lineCap = 'round';
-        context.setLineDash([8, 6]);
-        context.stroke();
-        context.setLineDash([]);
-        context.shadowBlur = 0;
-        context.fillStyle = color;
-        context.font = '16px sans-serif';
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.fillText('⬆️', x1 - 16, y1 + (y2-y1)/2);
-        context.fillText('⬇️', x1 + 16, y1 + (y2-y1)/2);
-      }
-    }
-
-    // ===== ۵. خط موقت (در حال کشیدن) =====
-    if (isDragging && startDot && currentDot) {
-      const x1 = padding + startDot.col * cellSize;
-      const y1 = padding + startDot.row * cellSize;
-      const x2 = padding + currentDot.col * cellSize;
-      const y2 = padding + currentDot.row * cellSize;
-
-      const isAdjacent = (Math.abs(startDot.row - currentDot.row) + Math.abs(startDot.col - currentDot.col) === 1);
-      const isValid = isAdjacent && (startDot.row === currentDot.row || startDot.col === currentDot.col);
-
-      context.shadowColor = isValid ? 'rgba(0, 206, 201, 0.5)' : 'rgba(255, 107, 107, 0.5)';
-      context.shadowBlur = 20;
-      context.beginPath();
-      context.moveTo(x1, y1);
-      context.lineTo(x2, y2);
-      context.strokeStyle = isValid ? '#00CEC9' : '#FF6B6B';
-      context.lineWidth = isValid ? 4 : 2;
-      if (!isValid) context.setLineDash([6, 6]);
-      context.lineCap = 'round';
-      context.stroke();
-      context.setLineDash([]);
-      context.shadowBlur = 0;
-    }
-
-    // ===== ۶. مربع‌های پر شده (boxes × boxes) =====
+    // ===== ۴. مربع‌های پر شده =====
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < boxes; c++) {
         if (game.boxes && game.boxes[r] && game.boxes[r][c] && game.boxes[r][c] !== 0) {

@@ -1,36 +1,33 @@
 export class GameLogic {
   constructor(gridSize = 4, numPlayers = 2) {
-    // gridSize = تعداد نقاط در هر سطر/ستون (مثلاً 4 نقطه)
-    // تعداد مربع‌ها = (gridSize - 1)² = 9 مربع
     this.gridSize = gridSize;
     this.numPlayers = numPlayers;
     this.reset();
   }
 
   reset() {
-    const dots = this.gridSize;          // تعداد نقاط = 4
-    const boxes = this.gridSize - 1;     // تعداد مربع‌ها در هر سطر = 3
-    const totalBoxes = boxes * boxes;    // مجموع مربع‌ها = 9
+    const dots = this.gridSize;
+    const boxes = this.gridSize - 1;
     
-    // ===== خطوط افقی: boxes ردیف × dots ستون =====
-    // هر خط افقی بین دو نقطه مجاور در یک سطر
+    // ===== ماتریس‌های بازی =====
     this.horizontalLines = Array.from({ length: boxes }, () => Array(dots).fill(false));
-    
-    // ===== خطوط عمودی: dots ردیف × boxes ستون =====
-    // هر خط عمودی بین دو نقطه مجاور در یک ستون
     this.verticalLines = Array.from({ length: dots }, () => Array(boxes).fill(false));
-    
-    // ===== مربع‌ها: boxes × boxes =====
     this.boxes = Array.from({ length: boxes }, () => Array(boxes).fill(0));
     this.scores = Array(this.numPlayers).fill(0);
     this.currentPlayer = 0;
     this.gameOver = false;
     this.moveHistory = [];
     this.totalMoves = 0;
-    this.lastFilledBoxes = [];
-    this.totalBoxes = totalBoxes;
+    this.totalBoxes = boxes * boxes;
+    
+    // ===== هوش مصنوعی =====
+    this.aiMemory = [];
+    this.aiLearningRate = 0.1;
+    this.aiDiscountFactor = 0.9;
+    this.aiExplorationRate = 0.2;
   }
 
+  // ===== حرکت اصلی =====
   makeMove(row, col, isHorizontal, player) {
     if (this.gameOver) return { success: false, reason: 'game_over' };
     if (player !== this.currentPlayer) return { success: false, reason: 'wrong_turn' };
@@ -38,39 +35,30 @@ export class GameLogic {
     const dots = this.gridSize;
     const boxes = this.gridSize - 1;
     
-    // ===== اعتبارسنجی دقیق موقعیت =====
+    // ===== اعتبارسنجی =====
+    const validation = this.validateMove(row, col, isHorizontal);
+    if (!validation.valid) {
+      // کسر امتیاز برای حرکت اشتباه
+      this.penalizePlayer(player);
+      return { success: false, reason: validation.reason };
+    }
+
+    // ===== ثبت حرکت =====
     if (isHorizontal) {
-      // خط افقی: ردیف 0 تا boxes-1، ستون 0 تا dots-1
-      if (row < 0 || row >= boxes || col < 0 || col >= dots)
-        return { success: false, reason: 'invalid_position' };
-      if (this.horizontalLines[row][col])
-        return { success: false, reason: 'already_drawn' };
       this.horizontalLines[row][col] = true;
     } else {
-      // خط عمودی: ردیف 0 تا dots-1، ستون 0 تا boxes-1
-      if (row < 0 || row >= dots || col < 0 || col >= boxes)
-        return { success: false, reason: 'invalid_position' };
-      if (this.verticalLines[row][col])
-        return { success: false, reason: 'already_drawn' };
       this.verticalLines[row][col] = true;
     }
 
     this.totalMoves++;
     this.moveHistory.push({ row, col, isHorizontal, player });
     
-    // ===== بررسی مربع‌های ساخته شده =====
+    // ===== بررسی مربع‌ها =====
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
     const filledCount = filledBoxes.length;
-    this.lastFilledBoxes = filledBoxes;
 
-    // ===== قانون امتیازدهی و نوبت‌گیری =====
-    if (filledCount > 0) {
-      // اگر مربعی ساخته شد، امتیاز می‌گیرد و دوباره حرکت می‌کند
-      // هیچ امتیازی کسر نمی‌شود
-    } else {
-      // اگر مربعی ساخته نشد، نوبت به بازیکن بعدی می‌رود
-      this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
-    }
+    // ===== قانون نوبت‌گیری (حتی اگر مربع ساخته شود) =====
+    this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
 
     this.gameOver = this.checkGameOver();
 
@@ -84,6 +72,32 @@ export class GameLogic {
     };
   }
 
+  // ===== اعتبارسنجی حرکت =====
+  validateMove(row, col, isHorizontal) {
+    const dots = this.gridSize;
+    const boxes = this.gridSize - 1;
+    
+    if (isHorizontal) {
+      if (row < 0 || row >= boxes || col < 0 || col >= dots)
+        return { valid: false, reason: 'invalid_position' };
+      if (this.horizontalLines[row][col])
+        return { valid: false, reason: 'already_drawn' };
+    } else {
+      if (row < 0 || row >= dots || col < 0 || col >= boxes)
+        return { valid: false, reason: 'invalid_position' };
+      if (this.verticalLines[row][col])
+        return { valid: false, reason: 'already_drawn' };
+    }
+    return { valid: true };
+  }
+
+  // ===== کسر امتیاز برای حرکات اشتباه =====
+  penalizePlayer(player) {
+    if (player < 0 || player >= this.numPlayers) return;
+    this.scores[player] = Math.max(0, this.scores[player] - 1);
+  }
+
+  // ===== بررسی مربع‌ها =====
   checkAndFillBoxes(row, col, isHorizontal, player) {
     const filledBoxes = [];
     const boxes = this.gridSize - 1;
@@ -92,11 +106,6 @@ export class GameLogic {
       if (r < 0 || r >= boxes || c < 0 || c >= boxes) return false;
       if (this.boxes[r][c] !== 0) return false;
       
-      // چهار ضلع مربع:
-      // بالا: horizontalLines[r][c]
-      // پایین: horizontalLines[r+1][c]
-      // چپ: verticalLines[r][c]
-      // راست: verticalLines[r][c+1]
       const top = this.horizontalLines[r]?.[c] || false;
       const bottom = (r + 1 < this.horizontalLines.length) ? this.horizontalLines[r + 1]?.[c] || false : false;
       const left = this.verticalLines[r]?.[c] || false;
@@ -111,39 +120,18 @@ export class GameLogic {
       return false;
     };
 
-    // بررسی مربع‌های مجاور خط رسم‌شده
     if (isHorizontal) {
-      // مربع بالا (اگر ردیف > 0)
       if (row > 0) checkBox(row - 1, col);
-      // مربع پایین (اگر ردیف < boxes-1)
       if (row < boxes) checkBox(row, col);
     } else {
-      // مربع چپ (اگر ستون > 0)
       if (col > 0) checkBox(row, col - 1);
-      // مربع راست (اگر ستون < boxes-1)
       if (col < boxes) checkBox(row, col);
     }
     
     return filledBoxes;
   }
 
-  checkGameOver() {
-    const boxes = this.gridSize - 1;
-    for (let r = 0; r < boxes; r++) {
-      for (let c = 0; c < boxes; c++) {
-        if (this.boxes[r][c] === 0) return false;
-      }
-    }
-    return true;
-  }
-
-  getWinner() {
-    if (!this.gameOver) return null;
-    const maxScore = Math.max(...this.scores);
-    const winners = this.scores.map((s, i) => s === maxScore ? i : -1).filter(i => i >= 0);
-    return winners.length === 1 ? winners[0] : -1;
-  }
-
+  // ===== هوش مصنوعی Q-Learning =====
   getAIMove(player) {
     if (this.currentPlayer !== player) return null;
     
@@ -169,23 +157,55 @@ export class GameLogic {
 
     if (allMoves.length === 0) return null;
 
-    // ===== ارزیابی حرکات =====
+    // ===== ارزیابی با Q-Learning =====
     const evaluated = allMoves.map(move => {
+      const moveKey = `${move.row},${move.col},${move.isHorizontal}`;
+      const existingQ = this.aiMemory.find(m => m.key === moveKey);
+      const qValue = existingQ ? existingQ.q : 0;
+      
       const myFilled = this.simulateMove(move.row, move.col, move.isHorizontal, player + 1);
+      
+      // ===== ترکیب Q-Value و امتیاز مربع =====
+      const score = (qValue * this.aiLearningRate) + (myFilled.length * 10);
+      
       return {
         ...move,
-        myScore: myFilled.length
+        qValue,
+        score,
+        myFilled: myFilled.length
       };
     });
 
-    // ===== اولویت با حرکتی که بیشترین مربع را بسازد =====
-    evaluated.sort((a, b) => b.myScore - a.myScore);
+    // ===== انتخاب با ε-greedy =====
+    const shouldExplore = Math.random() < this.aiExplorationRate;
     
-    const maxScore = evaluated[0]?.myScore || 0;
-    const bestMoves = evaluated.filter(m => m.myScore === maxScore);
-    return bestMoves[Math.floor(Math.random() * bestMoves.length)] || allMoves[0];
+    if (shouldExplore) {
+      // حرکت تصادفی (اکتشاف)
+      return allMoves[Math.floor(Math.random() * allMoves.length)];
+    } else {
+      // بهترین حرکت (استخراج)
+      evaluated.sort((a, b) => b.score - a.score);
+      const bestMove = evaluated[0];
+      
+      // ===== به‌روزرسانی Q-Learning =====
+      if (bestMove) {
+        const moveKey = `${bestMove.row},${bestMove.col},${bestMove.isHorizontal}`;
+        const existing = this.aiMemory.find(m => m.key === moveKey);
+        const reward = bestMove.myFilled * 10 - 1;
+        const newQ = (existing ? existing.q : 0) + this.aiLearningRate * (reward + this.aiDiscountFactor * 0 - (existing ? existing.q : 0));
+        
+        if (existing) {
+          existing.q = newQ;
+        } else {
+          this.aiMemory.push({ key: moveKey, q: newQ });
+        }
+      }
+      
+      return bestMove || allMoves[0];
+    }
   }
 
+  // ===== شبیه‌سازی حرکت =====
   simulateMove(row, col, isHorizontal, player) {
     const backupH = this.horizontalLines.map(row => [...row]);
     const backupV = this.verticalLines.map(row => [...row]);
@@ -231,30 +251,21 @@ export class GameLogic {
     return filled;
   }
 
-  // ===== تشخیص خطاهای هوش مصنوعی =====
-  detectError(move, player) {
-    const dots = this.gridSize;
+  checkGameOver() {
     const boxes = this.gridSize - 1;
-    
-    if (move.isHorizontal) {
-      if (move.row < 0 || move.row >= boxes || move.col < 0 || move.col >= dots)
-        return { error: true, reason: 'invalid_position' };
-      if (this.horizontalLines[move.row][move.col])
-        return { error: true, reason: 'already_drawn' };
-    } else {
-      if (move.row < 0 || move.row >= dots || move.col < 0 || move.col >= boxes)
-        return { error: true, reason: 'invalid_position' };
-      if (this.verticalLines[move.row][move.col])
-        return { error: true, reason: 'already_drawn' };
+    for (let r = 0; r < boxes; r++) {
+      for (let c = 0; c < boxes; c++) {
+        if (this.boxes[r][c] === 0) return false;
+      }
     }
-    
-    return { error: false };
+    return true;
   }
 
-  // ===== کسر امتیاز برای حرکات اشتباه =====
-  penalizePlayer(player) {
-    if (player < 0 || player >= this.numPlayers) return;
-    this.scores[player] = Math.max(0, this.scores[player] - 1);
+  getWinner() {
+    if (!this.gameOver) return null;
+    const maxScore = Math.max(...this.scores);
+    const winners = this.scores.map((s, i) => s === maxScore ? i : -1).filter(i => i >= 0);
+    return winners.length === 1 ? winners[0] : -1;
   }
 
   getRemainingMoves() {
