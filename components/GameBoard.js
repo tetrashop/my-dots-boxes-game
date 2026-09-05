@@ -18,14 +18,12 @@ export default function GameBoard({
   const [renderKey, setRenderKey] = useState(0);
   const [blinkState, setBlinkState] = useState(true);
 
-  // چشمک زدن خط پیشنهادی
   useEffect(() => {
     if (!suggestedMove) return;
     const interval = setInterval(() => setBlinkState(prev => !prev), 500);
     return () => clearInterval(interval);
   }, [suggestedMove]);
 
-  // محاسبه اندازه‌ها بر اساس موبایل یا دسکتاپ
   const getSizes = useCallback(() => {
     const baseCell = isMobile ? 38 : 50;
     const basePadding = isMobile ? 28 : 40;
@@ -33,7 +31,6 @@ export default function GameBoard({
     return { cellSize: baseCell, padding: basePadding, dotRadius };
   }, [isMobile]);
 
-  // محاسبه ابعاد کلی تخته
   const calculateDimensions = useCallback(() => {
     const { cellSize, padding } = getSizes();
     const boxes = gridSize - 1;
@@ -41,12 +38,10 @@ export default function GameBoard({
     return { cellSize, padding, totalSize };
   }, [gridSize, getSizes]);
 
-  // به‌روزرسانی رندر
   useEffect(() => {
     setRenderKey(prev => prev + 1);
   }, [game, suggestedMove]);
 
-  // مقداردهی canvas و رسم
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -65,7 +60,6 @@ export default function GameBoard({
     drawBoard(context, dims);
   }, [game, playerColors, renderKey, calculateDimensions, suggestedMove, blinkState]);
 
-  // تابع اصلی رسم تخته
   const drawBoard = (context, dims) => {
     if (!game) return;
     const { cellSize, padding, totalSize } = dims;
@@ -102,9 +96,9 @@ export default function GameBoard({
       }
     }
 
-    // ===== ۲. خطوط افقی (boxes × dots) =====
-    for (let r = 0; r < boxes; r++) {
-      for (let c = 0; c < dots; c++) {
+    // ===== ۲. خطوط افقی (dots × boxes) =====
+    for (let r = 0; r < dots; r++) {
+      for (let c = 0; c < boxes; c++) {
         if (game.horizontalLines && game.horizontalLines[r] && game.horizontalLines[r][c]) {
           const x1 = padding + c * cellSize;
           const y1 = padding + r * cellSize;
@@ -122,9 +116,9 @@ export default function GameBoard({
       }
     }
 
-    // ===== ۳. خطوط عمودی (dots × boxes) =====
-    for (let r = 0; r < dots; r++) {
-      for (let c = 0; c < boxes; c++) {
+    // ===== ۳. خطوط عمودی (boxes × dots) =====
+    for (let r = 0; r < boxes; r++) {
+      for (let c = 0; c < dots; c++) {
         if (game.verticalLines && game.verticalLines[r] && game.verticalLines[r][c]) {
           const x1 = padding + c * cellSize;
           const y1 = padding + r * cellSize;
@@ -195,7 +189,7 @@ export default function GameBoard({
       }
     }
 
-    // ===== ۵. خط موقت (در حال کشیدن) =====
+    // ===== ۵. خط موقت =====
     if (isDragging && startDot && currentDot) {
       const x1 = padding + startDot.col * cellSize;
       const y1 = padding + startDot.row * cellSize;

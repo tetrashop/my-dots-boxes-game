@@ -9,12 +9,12 @@ export class GameLogic {
     const dots = this.gridSize;          // تعداد نقاط
     const boxes = this.gridSize - 1;     // تعداد مربع‌ها در هر سطر/ستون
     
-    // ===== آرایه‌های خطوط =====
-    // خطوط افقی: (boxes) ردیف × (dots) ستون
-    this.horizontalLines = Array.from({ length: boxes }, () => Array(dots).fill(false));
-    // خطوط عمودی: (dots) ردیف × (boxes) ستون
-    this.verticalLines = Array.from({ length: dots }, () => Array(boxes).fill(false));
-    // مربع‌ها: (boxes) × (boxes)
+    // ===== آرایه‌های خطوط (اصلاح‌شده) =====
+    // خطوط افقی: (gridSize) ردیف × (gridSize-1) ستون
+    this.horizontalLines = Array.from({ length: dots }, () => Array(boxes).fill(false));
+    // خطوط عمودی: (gridSize-1) ردیف × (gridSize) ستون
+    this.verticalLines = Array.from({ length: boxes }, () => Array(dots).fill(false));
+    // مربع‌ها: (gridSize-1) × (gridSize-1)
     this.boxes = Array.from({ length: boxes }, () => Array(boxes).fill(0));
     this.scores = Array(this.numPlayers).fill(0);
     this.currentPlayer = 0;
@@ -23,29 +23,28 @@ export class GameLogic {
     this.totalMoves = 0;
   }
 
-  // ===== اعتبارسنجی حرکت (قانون: مجاور بودن و نبودن یال) =====
+  // ===== اعتبارسنجی حرکت =====
   validateMove(row, col, isHorizontal) {
     const dots = this.gridSize;
     const boxes = this.gridSize - 1;
     
-    // بررسی محدوده
     if (isHorizontal) {
-      if (row < 0 || row >= boxes || col < 0 || col >= dots)
+      // ردیف: 0 تا gridSize-1، ستون: 0 تا gridSize-2
+      if (row < 0 || row >= dots || col < 0 || col >= boxes)
         return { valid: false, reason: 'invalid_position' };
       if (this.horizontalLines[row][col])
         return { valid: false, reason: 'already_drawn' };
     } else {
-      if (row < 0 || row >= dots || col < 0 || col >= boxes)
+      // ردیف: 0 تا gridSize-2، ستون: 0 تا gridSize-1
+      if (row < 0 || row >= boxes || col < 0 || col >= dots)
         return { valid: false, reason: 'invalid_position' };
       if (this.verticalLines[row][col])
         return { valid: false, reason: 'already_drawn' };
     }
-    // مجاور بودن با توجه به isHorizontal تضمین شده است
-    // درجه رأس‌ها محدودیتی ندارد
     return { valid: true };
   }
 
-  // ===== حرکت اصلی (با رعایت قانون نوبت‌گیری) =====
+  // ===== حرکت اصلی =====
   makeMove(row, col, isHorizontal, player) {
     if (this.gameOver) return { success: false, reason: 'game_over' };
     if (player !== this.currentPlayer) return { success: false, reason: 'wrong_turn' };
@@ -55,7 +54,6 @@ export class GameLogic {
       return { success: false, reason: validation.reason };
     }
 
-    // ثبت خط
     if (isHorizontal) {
       this.horizontalLines[row][col] = true;
     } else {
@@ -65,15 +63,13 @@ export class GameLogic {
     this.totalMoves++;
     this.moveHistory.push({ row, col, isHorizontal, player });
     
-    // بررسی مربع‌های ساخته شده
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
     const filledCount = filledBoxes.length;
 
-    // ===== قانون نوبت‌گیری: اگر مربعی ساخته شد، نوبت عوض نمی‌شود =====
+    // قانون نوبت‌گیری: اگر مربعی ساخته نشد، نوبت عوض شود
     if (filledCount === 0) {
       this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
     }
-    // در غیر این صورت، همان بازیکن ادامه می‌دهد
 
     this.gameOver = this.checkGameOver();
 
@@ -87,7 +83,7 @@ export class GameLogic {
     };
   }
 
-  // ===== بررسی و پر کردن مربع‌ها =====
+  // ===== بررسی مربع‌ها =====
   checkAndFillBoxes(row, col, isHorizontal, player) {
     const filledBoxes = [];
     const boxes = this.gridSize - 1;
@@ -111,7 +107,6 @@ export class GameLogic {
       return false;
     };
 
-    // بررسی مربع‌های مجاور خط رسم‌شده
     if (isHorizontal) {
       if (row > 0) checkBox(row - 1, col);
       if (row < boxes) checkBox(row, col);
@@ -140,7 +135,7 @@ export class GameLogic {
     return winners.length === 1 ? winners[0] : -1;
   }
 
-  // ===== هوش مصنوعی با اولویت مربع‌سازی =====
+  // ===== هوش مصنوعی =====
   getAIMove(player) {
     if (this.currentPlayer !== player) return null;
     
@@ -148,16 +143,17 @@ export class GameLogic {
     const boxes = this.gridSize - 1;
     const allMoves = [];
     
-    // جمع‌آوری تمام حرکات مجاز
-    for (let r = 0; r < boxes; r++) {
-      for (let c = 0; c < dots; c++) {
+    // خطوط افقی: همه ردیف‌ها (0 تا dots-1) و ستون‌ها (0 تا boxes-1)
+    for (let r = 0; r < dots; r++) {
+      for (let c = 0; c < boxes; c++) {
         if (!this.horizontalLines[r][c]) {
           allMoves.push({ row: r, col: c, isHorizontal: true });
         }
       }
     }
-    for (let r = 0; r < dots; r++) {
-      for (let c = 0; c < boxes; c++) {
+    // خطوط عمودی: ردیف‌ها (0 تا boxes-1) و ستون‌ها (0 تا dots-1)
+    for (let r = 0; r < boxes; r++) {
+      for (let c = 0; c < dots; c++) {
         if (!this.verticalLines[r][c]) {
           allMoves.push({ row: r, col: c, isHorizontal: false });
         }
@@ -166,7 +162,6 @@ export class GameLogic {
 
     if (allMoves.length === 0) return null;
 
-    // ارزیابی: اولویت با حرکتی که مربع می‌سازد
     const evaluated = allMoves.map(move => {
       const filled = this.simulateMove(move.row, move.col, move.isHorizontal, player + 1);
       return { ...move, score: filled.length };
@@ -175,7 +170,6 @@ export class GameLogic {
     evaluated.sort((a, b) => b.score - a.score);
     const bestScore = evaluated[0]?.score || 0;
     const bestMoves = evaluated.filter(m => m.score === bestScore);
-    
     return bestMoves[Math.floor(Math.random() * bestMoves.length)] || allMoves[0];
   }
 
@@ -228,13 +222,13 @@ export class GameLogic {
     const dots = this.gridSize;
     const boxes = this.gridSize - 1;
     let count = 0;
-    for (let r = 0; r < boxes; r++) {
-      for (let c = 0; c < dots; c++) {
+    for (let r = 0; r < dots; r++) {
+      for (let c = 0; c < boxes; c++) {
         if (!this.horizontalLines[r][c]) count++;
       }
     }
-    for (let r = 0; r < dots; r++) {
-      for (let c = 0; c < boxes; c++) {
+    for (let r = 0; r < boxes; r++) {
+      for (let c = 0; c < dots; c++) {
         if (!this.verticalLines[r][c]) count++;
       }
     }
