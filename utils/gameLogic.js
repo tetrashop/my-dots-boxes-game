@@ -1,14 +1,15 @@
 export class GameLogic {
   constructor(gridSize = 4, numPlayers = 2) {
-    this.gridSize = gridSize;
+    this.gridSize = gridSize;          // تعداد نقاط در هر سطر/ستون
     this.numPlayers = numPlayers;
     this.reset();
   }
 
   reset() {
-    const dots = this.gridSize;
-    const boxes = this.gridSize - 1;
+    const dots = this.gridSize;          // تعداد نقاط
+    const boxes = this.gridSize - 1;     // تعداد مربع‌ها در هر سطر/ستون
     
+    // ===== آرایه‌های خطوط =====
     // خطوط افقی: (boxes) ردیف × (dots) ستون
     this.horizontalLines = Array.from({ length: boxes }, () => Array(dots).fill(false));
     // خطوط عمودی: (dots) ردیف × (boxes) ستون
@@ -22,11 +23,12 @@ export class GameLogic {
     this.totalMoves = 0;
   }
 
-  // ===== اعتبارسنجی حرکت =====
+  // ===== اعتبارسنجی حرکت (قانون ۲ و ۴) =====
   validateMove(row, col, isHorizontal) {
     const dots = this.gridSize;
     const boxes = this.gridSize - 1;
     
+    // بررسی محدوده
     if (isHorizontal) {
       if (row < 0 || row >= boxes || col < 0 || col >= dots)
         return { valid: false, reason: 'invalid_position' };
@@ -38,10 +40,12 @@ export class GameLogic {
       if (this.verticalLines[row][col])
         return { valid: false, reason: 'already_drawn' };
     }
+    // مجاور بودن با توجه به isHorizontal تضمین شده است
+    // درجه رأس‌ها محدودیتی ندارد (قانون ۲)
     return { valid: true };
   }
 
-  // ===== حرکت اصلی =====
+  // ===== حرکت اصلی (قانون ۱ و ۳ و ۵) =====
   makeMove(row, col, isHorizontal, player) {
     if (this.gameOver) return { success: false, reason: 'game_over' };
     if (player !== this.currentPlayer) return { success: false, reason: 'wrong_turn' };
@@ -61,12 +65,16 @@ export class GameLogic {
     this.totalMoves++;
     this.moveHistory.push({ row, col, isHorizontal, player });
     
-    // بررسی مربع‌ها
+    // بررسی مربع‌های ساخته شده (قانون ۳)
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
     const filledCount = filledBoxes.length;
 
-    // تغییر نوبت (حتی اگر مربع ساخته شود)
-    this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
+    // ===== قانون ۱: اگر مربعی ساخته شد، نوبت عوض نمی‌شود =====
+    if (filledCount === 0) {
+      this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
+    }
+    // در غیر این صورت، همان بازیکن ادامه می‌دهد
+
     this.gameOver = this.checkGameOver();
 
     return {
@@ -79,7 +87,7 @@ export class GameLogic {
     };
   }
 
-  // ===== بررسی مربع‌ها =====
+  // ===== بررسی و پر کردن مربع‌ها (قانون ۳) =====
   checkAndFillBoxes(row, col, isHorizontal, player) {
     const filledBoxes = [];
     const boxes = this.gridSize - 1;
@@ -88,6 +96,7 @@ export class GameLogic {
       if (r < 0 || r >= boxes || c < 0 || c >= boxes) return false;
       if (this.boxes[r][c] !== 0) return false;
       
+      // چهار ضلع مربع
       const top = this.horizontalLines[r]?.[c] || false;
       const bottom = (r + 1 < this.horizontalLines.length) ? this.horizontalLines[r + 1]?.[c] || false : false;
       const left = this.verticalLines[r]?.[c] || false;
@@ -95,13 +104,14 @@ export class GameLogic {
       
       if (top && bottom && left && right) {
         this.boxes[r][c] = player;
-        this.scores[player - 1]++;
+        this.scores[player - 1]++;   // قانون ۵: امتیازدهی
         filledBoxes.push({ row: r, col: c });
         return true;
       }
       return false;
     };
 
+    // بررسی مربع‌های مجاور خط رسم‌شده
     if (isHorizontal) {
       if (row > 0) checkBox(row - 1, col);
       if (row < boxes) checkBox(row, col);
@@ -130,7 +140,7 @@ export class GameLogic {
     return winners.length === 1 ? winners[0] : -1;
   }
 
-  // ===== هوش مصنوعی =====
+  // ===== هوش مصنوعی (با رعایت قوانین) =====
   getAIMove(player) {
     if (this.currentPlayer !== player) return null;
     
@@ -138,6 +148,7 @@ export class GameLogic {
     const boxes = this.gridSize - 1;
     const allMoves = [];
     
+    // جمع‌آوری تمام حرکات مجاز (قانون ۲ و ۴)
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < dots; c++) {
         if (!this.horizontalLines[r][c]) {
@@ -155,7 +166,7 @@ export class GameLogic {
 
     if (allMoves.length === 0) return null;
 
-    // ارزیابی: اولویت با حرکتی که مربع می‌سازد
+    // ارزیابی: اولویت با حرکتی که مربع می‌سازد (قانون ۳)
     const evaluated = allMoves.map(move => {
       const filled = this.simulateMove(move.row, move.col, move.isHorizontal, player + 1);
       return { ...move, score: filled.length };

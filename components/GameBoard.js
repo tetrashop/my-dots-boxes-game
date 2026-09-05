@@ -137,7 +137,7 @@ export default function GameBoard({
       }
     }
 
-    // ===== ۴. مربع‌های پر شده =====
+    // ===== ۴. مربع‌های پر شده (قانون ۳) =====
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < boxes; c++) {
         if (game.boxes && game.boxes[r] && game.boxes[r][c] && game.boxes[r][c] !== 0) {
@@ -197,7 +197,6 @@ export default function GameBoard({
     if (!dot1 || !dot2) return false;
     const dr = Math.abs(dot1.row - dot2.row);
     const dc = Math.abs(dot1.col - dot2.col);
-    // مجاور: (0,1) یا (1,0)
     return (dr === 0 && dc === 1) || (dr === 1 && dc === 0);
   };
 
@@ -217,24 +216,16 @@ export default function GameBoard({
     return game.verticalLines && game.verticalLines[line.row] && game.verticalLines[line.row][line.col] || false;
   };
 
-  // ===== رویدادها (با دیباگ) =====
+  // ===== رویدادها =====
   const handlePointerDown = (e) => {
     e.preventDefault();
-    console.log('🖱️ Pointer Down');
-    if (game.gameOver || game.currentPlayer !== 0) {
-      console.log('⛔ بازی تمام شده یا نوبت شما نیست');
-      return;
-    }
+    if (game.gameOver || game.currentPlayer !== 0) return;
     const coords = getCanvasCoords(e.clientX, e.clientY);
-    console.log('📍 مختصات:', coords);
     const dot = findNearestDot(coords.x, coords.y);
     if (dot) {
-      console.log('🎯 نقطه انتخاب شد:', dot);
       setStartDot(dot);
       setCurrentDot(dot);
       setIsDragging(true);
-    } else {
-      console.log('❌ هیچ نقطه‌ای پیدا نشد');
     }
   };
 
@@ -251,23 +242,16 @@ export default function GameBoard({
 
   const handlePointerUp = (e) => {
     e.preventDefault();
-    console.log('🖱️ Pointer Up');
     if (!isDragging || !startDot) {
       resetDragState();
       return;
     }
     const coords = getCanvasCoords(e.clientX, e.clientY);
     const endDot = findNearestDot(coords.x, coords.y);
-    console.log('📍 نقطه پایان:', endDot);
-    
     if (endDot && startDot) {
       const line = getLineData(startDot, endDot);
-      console.log('📏 خط پیدا شده:', line);
       if (line && !isLineDrawn(line)) {
-        console.log('✅ ارسال حرکت به onMove');
         onMove(line.row, line.col, line.isHorizontal);
-      } else {
-        console.log('❌ خط نامعتبر یا قبلاً رسم شده');
       }
     }
     resetDragState();
