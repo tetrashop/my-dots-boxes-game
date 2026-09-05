@@ -18,12 +18,14 @@ export default function GameBoard({
   const [renderKey, setRenderKey] = useState(0);
   const [blinkState, setBlinkState] = useState(true);
 
+  // چشمک زدن خط پیشنهادی
   useEffect(() => {
     if (!suggestedMove) return;
     const interval = setInterval(() => setBlinkState(prev => !prev), 500);
     return () => clearInterval(interval);
   }, [suggestedMove]);
 
+  // محاسبه اندازه‌ها بر اساس موبایل یا دسکتاپ
   const getSizes = useCallback(() => {
     const baseCell = isMobile ? 38 : 50;
     const basePadding = isMobile ? 28 : 40;
@@ -31,6 +33,7 @@ export default function GameBoard({
     return { cellSize: baseCell, padding: basePadding, dotRadius };
   }, [isMobile]);
 
+  // محاسبه ابعاد کلی تخته
   const calculateDimensions = useCallback(() => {
     const { cellSize, padding } = getSizes();
     const boxes = gridSize - 1;
@@ -38,10 +41,12 @@ export default function GameBoard({
     return { cellSize, padding, totalSize };
   }, [gridSize, getSizes]);
 
+  // به‌روزرسانی رندر
   useEffect(() => {
     setRenderKey(prev => prev + 1);
   }, [game, suggestedMove]);
 
+  // مقداردهی canvas و رسم
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -60,6 +65,7 @@ export default function GameBoard({
     drawBoard(context, dims);
   }, [game, playerColors, renderKey, calculateDimensions, suggestedMove, blinkState]);
 
+  // تابع اصلی رسم تخته
   const drawBoard = (context, dims) => {
     if (!game) return;
     const { cellSize, padding, totalSize } = dims;
@@ -72,7 +78,7 @@ export default function GameBoard({
     context.fillStyle = 'rgba(255,255,255,0.05)';
     context.fillRect(0, 0, totalSize, totalSize);
 
-    // ===== ۱. نقاط =====
+    // ===== ۱. رسم نقاط =====
     for (let r = 0; r < dots; r++) {
       for (let c = 0; c < dots; c++) {
         const x = padding + c * cellSize;
@@ -137,7 +143,83 @@ export default function GameBoard({
       }
     }
 
-    // ===== ۴. مربع‌های پر شده (قانون ۳) =====
+    // ===== ۴. خط پیشنهادی مربی =====
+    if (suggestedMove && blinkState) {
+      const { row, col, isHorizontal } = suggestedMove;
+      const color = '#FDCB6E';
+      if (isHorizontal) {
+        const x1 = padding + col * cellSize;
+        const y1 = padding + row * cellSize;
+        const x2 = padding + (col + 1) * cellSize;
+        context.shadowColor = 'rgba(253, 203, 110, 0.6)';
+        context.shadowBlur = 24;
+        context.beginPath();
+        context.moveTo(x1, y1);
+        context.lineTo(x2, y1);
+        context.strokeStyle = color;
+        context.lineWidth = 6;
+        context.lineCap = 'round';
+        context.setLineDash([8, 6]);
+        context.stroke();
+        context.setLineDash([]);
+        context.shadowBlur = 0;
+        context.fillStyle = color;
+        context.font = '16px sans-serif';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText('⬅️', x1, y1 - 14);
+        context.fillText('➡️', x2, y1 - 14);
+      } else {
+        const x1 = padding + col * cellSize;
+        const y1 = padding + row * cellSize;
+        const x2 = x1;
+        const y2 = padding + (row + 1) * cellSize;
+        context.shadowColor = 'rgba(253, 203, 110, 0.6)';
+        context.shadowBlur = 24;
+        context.beginPath();
+        context.moveTo(x1, y1);
+        context.lineTo(x2, y2);
+        context.strokeStyle = color;
+        context.lineWidth = 6;
+        context.lineCap = 'round';
+        context.setLineDash([8, 6]);
+        context.stroke();
+        context.setLineDash([]);
+        context.shadowBlur = 0;
+        context.fillStyle = color;
+        context.font = '16px sans-serif';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText('⬆️', x1 - 16, y1 + (y2-y1)/2);
+        context.fillText('⬇️', x1 + 16, y1 + (y2-y1)/2);
+      }
+    }
+
+    // ===== ۵. خط موقت (در حال کشیدن) =====
+    if (isDragging && startDot && currentDot) {
+      const x1 = padding + startDot.col * cellSize;
+      const y1 = padding + startDot.row * cellSize;
+      const x2 = padding + currentDot.col * cellSize;
+      const y2 = padding + currentDot.row * cellSize;
+
+      const isAdjacent = (Math.abs(startDot.row - currentDot.row) + Math.abs(startDot.col - currentDot.col) === 1);
+      const isValid = isAdjacent && (startDot.row === currentDot.row || startDot.col === currentDot.col);
+
+      context.shadowColor = isValid ? 'rgba(0, 206, 201, 0.5)' : 'rgba(255, 107, 107, 0.5)';
+      context.shadowBlur = 20;
+      context.beginPath();
+      context.moveTo(x1, y1);
+      context.lineTo(x2, y2);
+      context.strokeStyle = isValid ? '#00CEC9' : '#FF6B6B';
+      context.lineWidth = isValid ? 4 : 2;
+      if (!isValid) context.setLineDash([6, 6]);
+      context.lineCap = 'round';
+      context.stroke();
+      context.setLineDash([]);
+      context.shadowBlur = 0;
+    }
+
+    // ===== ۶. مربع‌های پر شده =====
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < boxes; c++) {
         if (game.boxes && game.boxes[r] && game.boxes[r][c] && game.boxes[r][c] !== 0) {
@@ -168,7 +250,10 @@ export default function GameBoard({
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
   };
 
   const findNearestDot = (x, y) => {

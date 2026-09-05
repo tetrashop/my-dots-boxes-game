@@ -49,7 +49,6 @@ export default function Home() {
     }
   }, [game, coachMode]);
 
-  // ===== هوش مصنوعی =====
   const makeAIMove = useCallback(() => {
     if (!game || game.gameOver || game.currentPlayer === 0 || isAIThinking) return;
     if (coachMode) return;
@@ -85,7 +84,6 @@ export default function Home() {
     }
   }, [game, coachMode, game?.currentPlayer, game?.gameOver]);
 
-  // ===== ذخیره نتیجه =====
   useEffect(() => {
     if (game && game.gameOver && user) {
       const winner = game.getWinner();
@@ -140,7 +138,7 @@ export default function Home() {
     const result = game.makeMove(row, col, isHorizontal, 0);
     if (result.success) {
       updateGameState();
-      // اگر نوبت به کاربر برگشت (به دلیل ساخت مربع)، منتظر حرکت بعدی هستیم
+      // اگر نوبت به کاربر برگشت، منتظر حرکت بعدی هستیم
     } else {
       alert('خطا: ' + result.reason);
     }

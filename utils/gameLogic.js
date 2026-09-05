@@ -23,7 +23,7 @@ export class GameLogic {
     this.totalMoves = 0;
   }
 
-  // ===== اعتبارسنجی حرکت (قانون ۲ و ۴) =====
+  // ===== اعتبارسنجی حرکت (قانون: مجاور بودن و نبودن یال) =====
   validateMove(row, col, isHorizontal) {
     const dots = this.gridSize;
     const boxes = this.gridSize - 1;
@@ -41,11 +41,11 @@ export class GameLogic {
         return { valid: false, reason: 'already_drawn' };
     }
     // مجاور بودن با توجه به isHorizontal تضمین شده است
-    // درجه رأس‌ها محدودیتی ندارد (قانون ۲)
+    // درجه رأس‌ها محدودیتی ندارد
     return { valid: true };
   }
 
-  // ===== حرکت اصلی (قانون ۱ و ۳ و ۵) =====
+  // ===== حرکت اصلی (با رعایت قانون نوبت‌گیری) =====
   makeMove(row, col, isHorizontal, player) {
     if (this.gameOver) return { success: false, reason: 'game_over' };
     if (player !== this.currentPlayer) return { success: false, reason: 'wrong_turn' };
@@ -65,11 +65,11 @@ export class GameLogic {
     this.totalMoves++;
     this.moveHistory.push({ row, col, isHorizontal, player });
     
-    // بررسی مربع‌های ساخته شده (قانون ۳)
+    // بررسی مربع‌های ساخته شده
     const filledBoxes = this.checkAndFillBoxes(row, col, isHorizontal, player + 1);
     const filledCount = filledBoxes.length;
 
-    // ===== قانون ۱: اگر مربعی ساخته شد، نوبت عوض نمی‌شود =====
+    // ===== قانون نوبت‌گیری: اگر مربعی ساخته شد، نوبت عوض نمی‌شود =====
     if (filledCount === 0) {
       this.currentPlayer = (this.currentPlayer + 1) % this.numPlayers;
     }
@@ -87,7 +87,7 @@ export class GameLogic {
     };
   }
 
-  // ===== بررسی و پر کردن مربع‌ها (قانون ۳) =====
+  // ===== بررسی و پر کردن مربع‌ها =====
   checkAndFillBoxes(row, col, isHorizontal, player) {
     const filledBoxes = [];
     const boxes = this.gridSize - 1;
@@ -104,7 +104,7 @@ export class GameLogic {
       
       if (top && bottom && left && right) {
         this.boxes[r][c] = player;
-        this.scores[player - 1]++;   // قانون ۵: امتیازدهی
+        this.scores[player - 1]++;
         filledBoxes.push({ row: r, col: c });
         return true;
       }
@@ -140,7 +140,7 @@ export class GameLogic {
     return winners.length === 1 ? winners[0] : -1;
   }
 
-  // ===== هوش مصنوعی (با رعایت قوانین) =====
+  // ===== هوش مصنوعی با اولویت مربع‌سازی =====
   getAIMove(player) {
     if (this.currentPlayer !== player) return null;
     
@@ -148,7 +148,7 @@ export class GameLogic {
     const boxes = this.gridSize - 1;
     const allMoves = [];
     
-    // جمع‌آوری تمام حرکات مجاز (قانون ۲ و ۴)
+    // جمع‌آوری تمام حرکات مجاز
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < dots; c++) {
         if (!this.horizontalLines[r][c]) {
@@ -166,7 +166,7 @@ export class GameLogic {
 
     if (allMoves.length === 0) return null;
 
-    // ارزیابی: اولویت با حرکتی که مربع می‌سازد (قانون ۳)
+    // ارزیابی: اولویت با حرکتی که مربع می‌سازد
     const evaluated = allMoves.map(move => {
       const filled = this.simulateMove(move.row, move.col, move.isHorizontal, player + 1);
       return { ...move, score: filled.length };
