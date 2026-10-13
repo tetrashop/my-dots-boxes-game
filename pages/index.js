@@ -14,7 +14,8 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
 
   const [game, setGame] = useState(null);
-  const [gameState, setGameState] = useState({
+  const [version, setVersion] = useState(0); // شمارنده‌ی نسخه - برای نیرو دادن به رندر
+  const [state, setState] = useState({
     scores: [],
     currentPlayer: 0,
     gameOver: false,
@@ -27,23 +28,30 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
   const [view, setView] = useState('auth');
   const [result, setResult] = useState(null);
-  const [aiThinking, setAiThinking] = useState(false);
-  const [renderKey, setRenderKey] = useState(0);
+  const [aiPending, setAiPending] = useState(false);
 
-  const aiTimer = useRef(null);
+  // مرجع برای جلوگیری از حرکت هم‌زمان AI
+  const gameRef = useRef(null);
+  useEffect(() => { gameRef.current = game; }, [game]);
 
-  // چک کردن موبایل
+  // تشخیص موبایل
   useEffect(() => {
     setMounted(true);
-    const check = () => setIsMobile(
-      window.innerWidth < 768 || 'ontouchstart' in window
-    );
+    const check = () =>
+      setIsMobile(
+        typeof window !== 'undefined' &&
+          (window.innerWidth < 768 || 'ontouchstart' in window)
+      );
     check();
     window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+    window.addEventListener('orientationchange', check);
+    return () => {
+      window.removeEventListener('resize', check);
+      window.removeEventListener('orientationchange', check);
+    };
   }, []);
 
-  // بارگذاری کاربر
+  // بازیابی کاربر
   useEffect(() => {
     if (!mounted) return;
     const u = auth.getCurrentUser();
@@ -55,126 +63,134 @@ export default function Home() {
     }
   }, [mounted]);
 
-  // مدیریت هوش مصنوعی
-  useEffect(() => {
-    if (!game || game.gameOver) return;
-    if (game.currentPlayer === 0) return;
-    if (aiThinking) return;
+  // ====== سنک کردن state با کلاس mutable Game ======
+  const sync = useCallback(() => {
+    const g = gameRef.current;
+    if (!g) return;
+    setState({
+      scores: [...g.scores],
+      currentPlayer: g.currentPlayer,
+      gameOver: g.gameOver,
+      winner: g.getWinner(),
+    });
+    setVersion((v) => v + 1);
+  }, []);
 
-    const player = game.currentPlayer;
-
-    setAiThinking(true);
-    aiTimer.current = setTimeout(() => {
-      const move = game.getAIMove(player);
-      if (move) {
-        game.makeMove(move.row, move.col, move.isHorizontal, player);
-        setGameState({
-          scores: [...game.scores],
-          currentPlayer: game.currentPlayer,
-          gameOver: game.gameOver,
-          winner: game.getWinner(),
-        });
-        setRenderKey((k) => k + 1);
-
-        if (game.gameOver) {
-          handleGameEnd();
-        }
-      }
-      setAiThinking(false);
-    }, 500);
-
-    return () => {
-      if (aiTimer.current) clearTimeout(aiTimer.current);
-    };
-  }, [game?.currentPlayer, game?.gameOver, aiThinking]);
-
-  const handleGameEnd = useCallback(() => {
-    if (!game || !user) return;
-    const winner = game.getWinner();
-    const playerBoxes = game.scores[0];
+  // ====== پایان بازی ======
+  const finishGame = useCallback(() => {
+    const g = gameRef.current;
+    if (!g || !user) return;
+    const winner = g.getWinner();
+    const myBoxes = g.scores[0];
     const isWinner = winner === 0;
     const isDraw = winner === -1;
-    const opponentBoxes = Math.max(...game.scores.slice(1));
-
+    const oppBoxes = Math.max(...g.scores.slice(1));
     const reward = calculateReward({
-      boxesMade: playerBoxes,
+      boxesMade: myBoxes,
       isWinner,
       isDraw,
-      isPerfect: isWinner && opponentBoxes === 0,
+      isPerfect: isWinner && oppBoxes === 0,
     });
-
     const updated = auth.addGameResult(user.id, {
-      boxes: playerBoxes,
+      boxes: myBoxes,
       reward,
       isWinner,
       isDraw,
     });
-
     if (updated) setUser(updated);
+    setResult({ winner, reward, myBoxes, isWinner, isDraw });
+  }, [user]);
 
-    setResult({
-      winner,
-      reward,
-      playerBoxes,
-      isWinner,
-      isDraw,
-    });
-  }, [game, user]);
+  // ====== حرکت بازیکن انسانی ======
+  const handleMove = useCallback(
+    (row, col, isH) => {
+      const g = gameRef.current;
+      if (!g || g.gameOver) return;
+      if (g.currentPlayer !== 0) return;
+      const res = g.makeMove(row, col, isH, 0);
+      if (!res.success) return;
+      sync();
+      if (g.gameOver) finishGame();
+    },
+    [sync, finishGame]
+  );
 
-  const handleMove = useCallback((row, col, isH) => {
-    if (!game || game.gameOver) return;
-    if (game.currentPlayer !== 0) return;
-    if (aiThinking) return;
+  // ====== هوش مصنوعی: افکت مستقل که با تغییر نسخه trigger می‌شود ======
+  useEffect(() => {
+    const g = gameRef.current;
+    if (!g || g.gameOver) return;
+    if (g.currentPlayer === 0) return;
+    if (aiPending) return;
 
-    const res = game.makeMove(row, col, isH, 0);
-    if (!res.success) return;
+    const aiPlayer = g.currentPlayer;
+    setAiPending(true);
 
-    setGameState({
-      scores: [...game.scores],
-      currentPlayer: game.currentPlayer,
-      gameOver: game.gameOver,
-      winner: game.getWinner(),
-    });
-    setRenderKey((k) => k + 1);
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      const gg = gameRef.current;
+      if (!gg || gg.gameOver) {
+        setAiPending(false);
+        return;
+      }
+      if (gg.currentPlayer !== aiPlayer) {
+        setAiPending(false);
+        return;
+      }
 
-    if (game.gameOver) {
-      handleGameEnd();
-    }
-  }, [game, aiThinking, handleGameEnd]);
+      const move = gg.getAIMove(aiPlayer);
+      if (move) {
+        gg.makeMove(move.row, move.col, move.isHorizontal, aiPlayer);
+        sync();
+        if (gg.gameOver) finishGame();
+      }
+      setAiPending(false);
+    }, 480);
 
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      setAiPending(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version, game]);
+
+  // ====== شروع بازی جدید ======
   const startGame = ({ gridSize: gs, numPlayers: np, playerColors: pc }) => {
     const g = new GameLogic(gs, np);
+    gameRef.current = g;
     setGame(g);
     setGridSize(gs);
     setNumPlayers(np);
-    setPlayerColors(pc);
-    setGameState({
+    setPlayerColors(pc.slice(0, np));
+    setState({
       scores: [...g.scores],
       currentPlayer: 0,
       gameOver: false,
       winner: null,
     });
     setResult(null);
-    setAiThinking(false);
-    setRenderKey((k) => k + 1);
+    setVersion((v) => v + 1);
     setView('game');
   };
 
+  // ====== خروج ======
   const logout = () => {
     auth.logout();
     setUser(null);
     setGame(null);
+    gameRef.current = null;
     setResult(null);
     setView('auth');
   };
 
-  // اگر mount نشده، خالی برگردان (SSR-safe)
+  // ====== رندر ======
   if (!mounted) {
     return (
       <div className="container">
         <h1>🧩 بازی مربع‌سازی</h1>
         <div className="card center">
-          <p>در حال بارگذاری...</p>
+          <p className="muted">در حال بارگذاری...</p>
         </div>
       </div>
     );
@@ -195,7 +211,11 @@ export default function Home() {
 
       {view === 'menu' && user && (
         <>
-          <Dashboard user={user} onLogout={logout} onPlay={() => setView('settings')} />
+          <Dashboard
+            user={user}
+            onLogout={logout}
+            onPlay={() => setView('settings')}
+          />
           <Leaderboard />
         </>
       )}
@@ -214,21 +234,21 @@ export default function Home() {
       {view === 'game' && game && (
         <>
           <GameStatus
-            scores={gameState.scores}
-            currentPlayer={gameState.currentPlayer}
-            gameOver={gameState.gameOver}
-            winner={gameState.winner}
+            scores={state.scores}
+            currentPlayer={state.currentPlayer}
+            gameOver={state.gameOver}
+            winner={state.winner}
             playerColors={playerColors}
             numPlayers={numPlayers}
             remaining={game.getRemainingMoves()}
+            aiPending={aiPending}
           />
 
           <GameBoard
-            key={renderKey}
             game={game}
+            version={version}
             onMove={handleMove}
             playerColors={playerColors}
-            gridSize={gridSize}
             isMobile={isMobile}
           />
 
@@ -245,27 +265,34 @@ export default function Home() {
             >
               {result.isWinner && (
                 <>
-                  🏆 برنده شدید! امتیاز دریافتی: <strong>+{result.reward}</strong>
+                  🏆 <strong>برنده شدید!</strong> امتیاز:{' '}
+                  <strong>+{result.reward}</strong>
                 </>
               )}
               {result.isDraw && (
                 <>
-                  🤝 مساوی! امتیاز دریافتی: <strong>+{result.reward}</strong>
+                  🤝 <strong>مساوی!</strong> امتیاز:{' '}
+                  <strong>+{result.reward}</strong>
                 </>
               )}
               {!result.isWinner && !result.isDraw && (
                 <>
-                  ❌ باخت! امتیاز: <strong>{result.reward}</strong>
+                  ❌ <strong>باخت!</strong> امتیاز:{' '}
+                  <strong>{result.reward}</strong>
                 </>
               )}
               <div className="muted" style={{ marginTop: 4 }}>
-                مربع‌های شما: {result.playerBoxes}
+                🟦 مربع‌های شما: {result.myBoxes}
               </div>
             </div>
           )}
 
           <div className="controls">
-            <button onClick={() => startGame({ gridSize, numPlayers, playerColors })}>
+            <button
+              onClick={() =>
+                startGame({ gridSize, numPlayers, playerColors })
+              }
+            >
               🔄 بازی جدید
             </button>
             <button className="ghost" onClick={() => setView('menu')}>

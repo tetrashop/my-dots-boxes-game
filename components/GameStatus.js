@@ -4,54 +4,47 @@ export default function GameStatus({
   gameOver,
   winner,
   playerColors,
-  numPlayers,
   remaining,
+  aiPending,
 }) {
-  const status = () => {
+  const statusText = () => {
     if (gameOver) {
       if (winner === -1) return '🤝 مساوی';
       return `🏆 برنده: بازیکن ${winner + 1}`;
     }
     if (currentPlayer === 0) return '👤 نوبت شما';
-    return `🤖 نوبت بازیکن ${currentPlayer + 1}`;
+    return aiPending ? `🤖 در حال فکر...` : `🤖 نوبت بازیکن ${currentPlayer + 1}`;
   };
 
   return (
     <div className="card">
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 8,
-          marginBottom: 8,
-        }}
-      >
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div className="status-row">
+        <div className="status-players">
           {scores.map((s, i) => (
             <div
               key={i}
-              className={'badge ' + (i === currentPlayer && !gameOver ? 'active' : '')}
+              className={
+                'badge ' + (i === currentPlayer && !gameOver ? 'active' : '')
+              }
             >
               <span
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 3,
-                  background: playerColors[i],
-                  display: 'inline-block',
-                }}
+                className="player-dot"
+                style={{ background: playerColors[i] }}
               />
-              بازیکن {i + 1}: {s}
+              <span>بازیکن {i + 1}: {s}</span>
             </div>
           ))}
         </div>
-        <div className="badge" style={{ background: gameOver ? '#ef4444' : '#6366f1', color: 'white' }}>
-          {status()}
+        <div
+          className={
+            'badge ' + (gameOver ? 'badge-danger' : 'badge-primary')
+          }
+        >
+          {statusText()}
         </div>
       </div>
-      {!gameOver && remaining !== undefined && (
-        <div className="muted center">
+      {!gameOver && typeof remaining === 'number' && (
+        <div className="muted center" style={{ marginTop: 8 }}>
           ⏳ حرکات باقی‌مانده: {remaining}
         </div>
       )}

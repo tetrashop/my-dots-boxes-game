@@ -4,57 +4,56 @@ const COLORS = {
   bg: '#0b1120',
   dot: '#94a3b8',
   dotActive: '#fbbf24',
-  line: '#475569',
   tempValid: '#10b981',
   tempInvalid: '#ef4444',
 };
 
 export default function GameBoard({
   game,
+  version,          // شمارنده‌ی نسخه - هر تغییر بازی +1
   onMove,
   playerColors,
-  gridSize,
   isMobile,
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
-  const [dims, setDims] = useState({ cell: 50, pad: 30, total: 0 });
   const [dragging, setDragging] = useState(false);
   const [startDot, setStartDot] = useState(null);
   const [hoverDot, setHoverDot] = useState(null);
 
-  // محاسبه ابعاد
-  const calcDims = useCallback(() => {
-    const cell = isMobile ? 40 : 55;
-    const pad = isMobile ? 20 : 30;
-    const total = (gridSize - 1) * cell + pad * 2;
+  // نگه‌داشتن آخرین state برای event handler ها (بدون rebind)
+  const stateRef = useRef({});
+  stateRef.current = { dragging, startDot, hoverDot, game, onMove };
+
+  // محاسبه ابعاد بر اساس عرض ظرف
+  const computeDims = useCallback(() => {
+    const containerW = containerRef.current?.clientWidth || 320;
+    const dots = game.gridSize;
+    const maxAvail = Math.min(containerW - 24, 560);
+    const cell = Math.max(
+      28,
+      Math.min(72, Math.floor((maxAvail - 40) / (dots - 1)))
+    );
+    const pad = Math.max(16, Math.round(cell * 0.55));
+    const total = (dots - 1) * cell + pad * 2;
     return { cell, pad, total };
-  }, [gridSize, isMobile]);
+  }, [game.gridSize]);
 
-  // رسم تخته
-  useEffect(() => {
+  // رسم
+  const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !game) return;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const d = calcDims();
-    setDims(d);
+    const { cell, pad, total } = computeDims();
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 
-    // اندازه نمایشی responsive
-    const containerW = containerRef.current?.clientWidth || 500;
-    const maxSize = Math.min(containerW - 10, 600);
-    const scale = Math.min(1, maxSize / d.total);
-    const displaySize = Math.floor(d.total * scale);
+    canvas.width = Math.round(total * dpr);
+    canvas.height = Math.round(total * dpr);
+    canvas.style.width = total + 'px';
+    canvas.style.height = total + 'px';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
 
-    canvas.width = d.total;
-    canvas.height = d.total;
-    canvas.style.width = displaySize + 'px';
-    canvas.style.height = displaySize + 'px';
-
-    draw(ctx, d);
-  }, [game, playerColors, dragging, startDot, hoverDot, calcDims]);
-
-  const draw = (ctx, d) => {
-    const { cell, pad, total } = d;
     const dots = game.gridSize;
     const boxes = game.gridSize - 1;
 
@@ -62,30 +61,34 @@ export default function GameBoard({
     ctx.fillStyle = COLORS.bg;
     ctx.fillRect(0, 0, total, total);
 
-    // نقاط
-    for (let r = 0; r < dots; r++) {
-      for (let c = 0; c < dots; c++) {
-        const x = pad + c * cell;
-        const y = pad + r * cell;
-        const isStart = startDot && startDot.r === r && startDot.c === c;
-        const isHover = hoverDot && hoverDot.r === r && hoverDot.c === c;
-
-        if (isStart || isHover) {
-          ctx.beginPath();
-          ctx.arc(x, y, 12, 0, 2 * Math.PI);
-          ctx.fillStyle = 'rgba(251, 191, 36, 0.25)';
-          ctx.fill();
+    // مربع‌های فتح‌شده (زیر خطوط)
+    for (let r = 0; r < boxes; r++) {
+      for (let c = 0; c < boxes; c++) {
+        if (game.boxes[r][c] !== 0) {
+          const x = pad + c * cell;
+          const y = pad + r * cell;
+          const color = playerColors[game.boxes[r][c] - 1] || '#6366f1';
+          ctx.fillStyle = color + '44';
+          ctx.fillRect(x + 3, y + 3, cell - 6, cell - 6);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x + 3, y + 3, cell - 6, cell - 6);
         }
-
-        ctx.beginPath();
-        ctx.arc(x, y, isStart ? 9 : 6, 0, 2 * Math.PI);
-        ctx.fillStyle = isStart ? COLORS.dotActive : COLORS.dot;
-        ctx.fill();
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
       }
     }
+
+    const lineWidth = Math.max(3, Math.round(cell * 0.1));
+    const drawLine = (x1, y1, x2, y2, color, w, dash = []) => {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = w;
+      ctx.lineCap = 'round';
+      ctx.setLineDash(dash);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    };
 
     // خطوط افقی
     for (let r = 0; r < dots; r++) {
@@ -95,12 +98,11 @@ export default function GameBoard({
           const y1 = pad + r * cell;
           const x2 = pad + (c + 1) * cell;
           let color = '#64748b';
-          if (r > 0 && game.boxes[r - 1] && game.boxes[r - 1][c]) {
+          if (r > 0 && game.boxes[r - 1] && game.boxes[r - 1][c])
             color = playerColors[game.boxes[r - 1][c] - 1];
-          } else if (r < boxes && game.boxes[r] && game.boxes[r][c]) {
+          else if (r < boxes && game.boxes[r] && game.boxes[r][c])
             color = playerColors[game.boxes[r][c] - 1];
-          }
-          drawLine(ctx, x1, y1, x2, y1, color, 4);
+          drawLine(x1, y1, x2, y1, color, lineWidth);
         }
       }
     }
@@ -109,103 +111,119 @@ export default function GameBoard({
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < dots; c++) {
         if (game.verticalLines[r][c]) {
-          const x1 = pad + c * cell;
+          const x = pad + c * cell;
           const y1 = pad + r * cell;
-          const x2 = x1;
           const y2 = pad + (r + 1) * cell;
           let color = '#64748b';
-          if (c > 0 && game.boxes[r] && game.boxes[r][c - 1]) {
+          if (c > 0 && game.boxes[r] && game.boxes[r][c - 1])
             color = playerColors[game.boxes[r][c - 1] - 1];
-          } else if (c < boxes && game.boxes[r] && game.boxes[r][c]) {
+          else if (c < boxes && game.boxes[r] && game.boxes[r][c])
             color = playerColors[game.boxes[r][c] - 1];
-          }
-          drawLine(ctx, x1, y1, x2, y2, color, 4);
+          drawLine(x, y1, x, y2, color, lineWidth);
         }
       }
     }
 
-    // خط پیش‌نمایش
+    // نقاط (روی خطوط تا کلیک‌پذیرتر باشن)
+    const dotR = Math.max(4, cell * 0.11);
+    const activeR = Math.max(7, cell * 0.16);
+    for (let r = 0; r < dots; r++) {
+      for (let c = 0; c < dots; c++) {
+        const x = pad + c * cell;
+        const y = pad + r * cell;
+        const isStart = startDot && startDot.r === r && startDot.c === c;
+
+        if (isStart) {
+          ctx.beginPath();
+          ctx.arc(x, y, activeR * 1.9, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(251, 191, 36, 0.22)';
+          ctx.fill();
+        }
+
+        ctx.beginPath();
+        ctx.arc(x, y, isStart ? activeR : dotR, 0, Math.PI * 2);
+        ctx.fillStyle = isStart ? COLORS.dotActive : COLORS.dot;
+        ctx.fill();
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
+
+    // پیش‌نمایش خط
     if (dragging && startDot && hoverDot) {
       const isAdj =
-        (Math.abs(startDot.r - hoverDot.r) === 1 && startDot.c === hoverDot.c) ||
-        (Math.abs(startDot.c - hoverDot.c) === 1 && startDot.r === hoverDot.r);
+        (Math.abs(startDot.r - hoverDot.r) === 1 &&
+          startDot.c === hoverDot.c) ||
+        (Math.abs(startDot.c - hoverDot.c) === 1 &&
+          startDot.r === hoverDot.r);
       if (isAdj) {
         const x1 = pad + startDot.c * cell;
         const y1 = pad + startDot.r * cell;
         const x2 = pad + hoverDot.c * cell;
         const y2 = pad + hoverDot.r * cell;
-        const valid =
-          isAdj &&
-          game.isValidMove(
-            Math.min(startDot.r, hoverDot.r),
-            Math.min(startDot.c, hoverDot.c),
-            startDot.r === hoverDot.r
-          );
+        const row = Math.min(startDot.r, hoverDot.r);
+        const col = Math.min(startDot.c, hoverDot.c);
+        const isH = startDot.r === hoverDot.r;
+        const valid = game.isValidMove(row, col, isH);
         drawLine(
-          ctx,
           x1,
           y1,
           x2,
           y2,
           valid ? COLORS.tempValid : COLORS.tempInvalid,
-          4,
-          valid ? [] : [6, 6]
+          lineWidth,
+          valid ? [] : [7, 7]
         );
       }
     }
+  }, [game, version, playerColors, dragging, startDot, hoverDot, computeDims]);
 
-    // مربع‌ها
-    for (let r = 0; r < boxes; r++) {
-      for (let c = 0; c < boxes; c++) {
-        if (game.boxes[r][c] !== 0) {
-          const x = pad + c * cell;
-          const y = pad + r * cell;
-          const color = playerColors[game.boxes[r][c] - 1];
-          ctx.fillStyle = color + '33';
-          ctx.fillRect(x + 2, y + 2, cell - 4, cell - 4);
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 2;
-          ctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
-        }
-      }
-    }
-  };
+  useEffect(() => {
+    draw();
+  }, [draw]);
 
-  const drawLine = (ctx, x1, y1, x2, y2, color, width, dash = []) => {
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    ctx.lineCap = 'round';
-    ctx.setLineDash(dash);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  };
+  // رسم مجدد در تغییر اندازه
+  useEffect(() => {
+    let raf;
+    const onResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(draw);
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+    };
+  }, [draw]);
 
-  // تبدیل مختصات
-  const getCoords = (e) => {
+  // تبدیل مختصات لمس/موس به مختصات منطقی canvas
+  const clientToLogical = (clientX, clientY) => {
     const canvas = canvasRef.current;
+    if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
+    const { total } = computeDims();
     return {
-      x: ((e.clientX - rect.left) * canvas.width) / rect.width,
-      y: ((e.clientY - rect.top) * canvas.height) / rect.height,
+      x: ((clientX - rect.left) / rect.width) * total,
+      y: ((clientY - rect.top) / rect.height) * total,
     };
   };
 
   const findDot = (x, y) => {
-    const { cell, pad } = dims;
+    const { cell, pad } = computeDims();
     const dots = game.gridSize;
-    const threshold = 25;
+    const threshold = Math.max(22, cell * 0.55);
     let best = null;
     let min = threshold;
     for (let r = 0; r < dots; r++) {
       for (let c = 0; c < dots; c++) {
         const dx = pad + c * cell;
         const dy = pad + r * cell;
-        const dist = Math.hypot(x - dx, y - dy);
-        if (dist < min) {
-          min = dist;
+        const d = Math.hypot(x - dx, y - dy);
+        if (d < min) {
+          min = d;
           best = { r, c };
         }
       }
@@ -213,70 +231,132 @@ export default function GameBoard({
     return best;
   };
 
-  // رویدادها
-  const handleDown = (e) => {
-    e.preventDefault();
-    if (!game || game.gameOver || game.currentPlayer !== 0) return;
-    const { x, y } = getCoords(e);
-    const dot = findDot(x, y);
-    if (dot) {
-      setStartDot(dot);
-      setHoverDot(dot);
-      setDragging(true);
-    }
-  };
-
-  const handleMove = (e) => {
-    e.preventDefault();
-    if (!game) return;
-    const { x, y } = getCoords(e);
-    const dot = findDot(x, y);
+  // شروع کشیدن
+  const beginDrag = (clientX, clientY) => {
+    const g = stateRef.current.game;
+    if (!g || g.gameOver) return false;
+    if (g.currentPlayer !== 0) return false; // فقط نوبت انسان
+    const pos = clientToLogical(clientX, clientY);
+    if (!pos) return false;
+    const dot = findDot(pos.x, pos.y);
+    if (!dot) return false;
+    setStartDot(dot);
     setHoverDot(dot);
+    setDragging(true);
+    return true;
   };
 
-  const handleUp = (e) => {
-    e.preventDefault();
-    if (!dragging || !startDot) {
-      resetState();
-      return;
-    }
-    const { x, y } = getCoords(e);
-    const end = findDot(x, y);
-
-    if (end && startDot) {
-      const isAdj =
-        (Math.abs(startDot.r - end.r) === 1 && startDot.c === end.c) ||
-        (Math.abs(startDot.c - end.c) === 1 && startDot.r === end.r);
-
-      if (isAdj) {
-        const row = Math.min(startDot.r, end.r);
-        const col = Math.min(startDot.c, end.c);
-        const isH = startDot.r === end.r;
-        if (game.isValidMove(row, col, isH)) {
-          onMove(row, col, isH);
-        }
-      }
-    }
-    resetState();
+  const updateDrag = (clientX, clientY) => {
+    if (!stateRef.current.dragging) return;
+    const pos = clientToLogical(clientX, clientY);
+    if (!pos) return;
+    const dot = findDot(pos.x, pos.y);
+    if (dot) setHoverDot(dot);
   };
 
-  const resetState = () => {
+  const endDrag = (clientX, clientY) => {
+    const { dragging: isDragging, startDot: sDot, game: g, onMove: cb } =
+      stateRef.current;
     setDragging(false);
     setStartDot(null);
     setHoverDot(null);
+
+    if (!isDragging || !sDot || !g) return;
+    const pos = clientToLogical(clientX, clientY);
+    if (!pos) return;
+    const end = findDot(pos.x, pos.y);
+    if (!end) return;
+
+    const isAdj =
+      (Math.abs(sDot.r - end.r) === 1 && sDot.c === end.c) ||
+      (Math.abs(sDot.c - end.c) === 1 && sDot.r === end.r);
+    if (!isAdj) return;
+
+    const row = Math.min(sDot.r, end.r);
+    const col = Math.min(sDot.c, end.c);
+    const isH = sDot.r === end.r;
+    if (g.isValidMove(row, col, isH)) {
+      cb(row, col, isH);
+    }
   };
 
+  // ============ رویدادها ============
+  // موس
+  const onMouseDown = (e) => {
+    if (e.button !== 0 && e.buttons !== 1) return;
+    e.preventDefault();
+    beginDrag(e.clientX, e.clientY);
+  };
+
+  // لمسی - با addEventListener غیر passive برای preventDefault
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const onTouchStart = (e) => {
+      if (e.touches.length !== 1) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      beginDrag(t.clientX, t.clientY);
+    };
+    const onTouchMove = (e) => {
+      if (e.touches.length !== 1) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      updateDrag(t.clientX, t.clientY);
+    };
+    const onTouchEnd = (e) => {
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      if (t) endDrag(t.clientX, t.clientY);
+      else endDrag(0, 0);
+    };
+
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+    canvas.addEventListener('touchcancel', onTouchEnd, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('touchstart', onTouchStart);
+      canvas.removeEventListener('touchmove', onTouchMove);
+      canvas.removeEventListener('touchend', onTouchEnd);
+      canvas.removeEventListener('touchcancel', onTouchEnd);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // رویداد موس روی document برای کشیدن نرم‌تر
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!stateRef.current.dragging) return;
+      e.preventDefault();
+      updateDrag(e.clientX, e.clientY);
+    };
+    const onUp = (e) => {
+      if (!stateRef.current.dragging) return;
+      endDrag(e.clientX, e.clientY);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <div className="canvas-wrapper" ref={containerRef}>
+    <div
+      className="canvas-wrapper"
+      ref={containerRef}
+      style={{ touchAction: 'none', userSelect: 'none' }}
+    >
       <canvas
         ref={canvasRef}
-        onMouseDown={handleDown}
-        onMouseMove={handleMove}
-        onMouseUp={handleUp}
-        onMouseLeave={resetState}
-        onTouchStart={handleDown}
-        onTouchMove={handleMove}
-        onTouchEnd={handleUp}
+        onMouseDown={onMouseDown}
+        onContextMenu={(e) => e.preventDefault()}
+        style={{ touchAction: 'none' }}
       />
     </div>
   );
