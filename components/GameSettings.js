@@ -1,52 +1,94 @@
 import { useState } from 'react';
+import config from '../utils/config';
 
-const COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#eab308'];
+const DEFAULT_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#eab308'];
 
-export default function GameSettings({ onStartGame, isMobile = false }) {
+export default function GameSettings({ onStart, isMobile }) {
   const [gridSize, setGridSize] = useState(4);
   const [numPlayers, setNumPlayers] = useState(2);
-  const [playerColors, setPlayerColors] = useState(COLORS.slice(0, 2));
+  const [colors, setColors] = useState(DEFAULT_COLORS.slice(0, 2));
 
-  const handleStart = () => {
-    onStartGame({ gridSize, numPlayers, playerColors });
+  const handlePlayers = (n) => {
+    setNumPlayers(n);
+    const next = [...colors];
+    while (next.length < n) next.push(DEFAULT_COLORS[next.length]);
+    setColors(next.slice(0, n));
   };
 
-  const handleColorChange = (index, color) => {
-    const newColors = [...playerColors];
-    newColors[index] = color;
-    setPlayerColors(newColors);
+  const handleColor = (i, color) => {
+    const next = [...colors];
+    next[i] = color;
+    setColors(next);
+  };
+
+  const start = () => {
+    onStart({ gridSize, numPlayers, playerColors: colors });
   };
 
   return (
-    <div className="card" style={{ marginBottom: '16px' }}>
-      <h3 style={{ marginBottom: '15px', color: '#A29BFE', textAlign: 'center' }}>⚙️ تنظیمات بازی</h3>
-      <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '15px' }}>
-        <div>
-          <label style={{ fontWeight: '600', color: 'rgba(255,255,255,0.7)', display: 'block', marginBottom: '4px' }}>📐 اندازه شبکه</label>
-          <select value={gridSize} onChange={(e) => setGridSize(Number(e.target.value))} style={{ padding: '8px 12px', borderRadius: '8px', border: '2px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: '14px', width: isMobile ? '100%' : 'auto' }}>
-            {[3,4,5,6,7,8].map(n => (
+    <div className="card">
+      <h3 style={{ marginBottom: 12, fontSize: '1rem' }}>⚙️ تنظیمات بازی</h3>
+
+      <div className="row" style={{ marginBottom: 12 }}>
+        <div className="col">
+          <label>📐 اندازه شبکه</label>
+          <select
+            value={gridSize}
+            onChange={(e) => setGridSize(Number(e.target.value))}
+          >
+            {Array.from({ length: config.gridMax - config.gridMin + 1 }, (_, i) => i + config.gridMin).map(
+              (n) => (
+                <option key={n} value={n}>
+                  {n}×{n} نقطه ({(n - 1) * (n - 1)} مربع)
+                </option>
+              )
+            )}
+          </select>
+        </div>
+
+        <div className="col">
+          <label>👥 تعداد بازیکنان</label>
+          <select
+            value={numPlayers}
+            onChange={(e) => handlePlayers(Number(e.target.value))}
+          >
+            {[2, 3, 4].map((n) => (
               <option key={n} value={n}>
-                {n}×{n} نقطه → {(n-1)}×{(n-1)} = {(n-1)*(n-1)} مربع
+                {n} نفر {n > 2 ? '(با AI)' : ''}
               </option>
             ))}
           </select>
         </div>
-        <div>
-          <label style={{ fontWeight: '600', color: 'rgba(255,255,255,0.7)', display: 'block', marginBottom: '4px' }}>👥 تعداد بازیکنان</label>
-          <select value={numPlayers} onChange={(e) => { const n = Number(e.target.value); setNumPlayers(n); setPlayerColors(COLORS.slice(0, n)); }} style={{ padding: '8px 12px', borderRadius: '8px', border: '2px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: '14px', width: isMobile ? '100%' : 'auto' }}>
-            {[2,3,4].map(n => <option key={n} value={n}>{n} نفر</option>)}
-          </select>
-        </div>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center', marginBottom: '15px' }}>
-        {playerColors.map((color, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <span style={{ fontWeight: '600', fontSize: '14px', color: 'rgba(255,255,255,0.7)' }}>بازیکن {i + 1}</span>
-            <input type="color" value={color} onChange={(e) => handleColorChange(i, e.target.value)} style={{ width: '32px', height: '32px', border: 'none', borderRadius: '6px', cursor: 'pointer', padding: '2px', background: 'transparent' }} />
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        {colors.map((c, i) => (
+          <div
+            key={i}
+            className="badge"
+            style={{ padding: '6px 10px', gap: 6 }}
+          >
+            <span>بازیکن {i + 1}</span>
+            <input
+              type="color"
+              value={c}
+              onChange={(e) => handleColor(i, e.target.value)}
+              style={{
+                width: 30,
+                height: 30,
+                border: 'none',
+                padding: 0,
+                background: 'transparent',
+                cursor: 'pointer',
+              }}
+            />
           </div>
         ))}
       </div>
-      <button onClick={handleStart} style={{ width: '100%', padding: '12px', fontSize: '1rem' }}>🚀 شروع بازی</button>
+
+      <button onClick={start} style={{ width: '100%' }}>
+        🚀 شروع بازی
+      </button>
     </div>
   );
 }

@@ -1,28 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { auth } from '../utils/auth';
 
-export default function Leaderboard({ isMobile }) {
+export default function Leaderboard() {
   const [users, setUsers] = useState([]);
 
   useEffect(() => {
-    setUsers(auth.getLeaderboard());
+    setUsers(auth.getLeaderboard(10));
   }, []);
 
+  if (users.length === 0) {
+    return (
+      <div className="card">
+        <h3 style={{ marginBottom: 12 }}>🏆 جدول رهبران</h3>
+        <p className="muted center">هنوز بازیکنی ثبت نشده</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="card" style={{ marginTop: '16px' }}>
-      <h3 style={{ marginBottom: '12px', color: '#A29BFE' }}>🏆 جدول رهبران</h3>
-      {users.length === 0 ? (
-        <p style={{ color: 'rgba(255,255,255,0.3)' }}>هنوز کاربری ثبت‌نام نکرده است.</p>
-      ) : (
-        <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-          {users.map((u, i) => (
-            <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: isMobile ? '0.85rem' : '0.95rem', color: 'rgba(255,255,255,0.8)' }}>
-              <span>{i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : `#${i+1}`}{u.name}</span>
-              <span style={{ color: '#A29BFE' }}>⭐ {u.score} | 💰 {u.balance}</span>
-            </div>
-          ))}
+    <div className="card">
+      <h3 style={{ marginBottom: 12 }}>🏆 جدول رهبران</h3>
+      {users.map((u, i) => (
+        <div key={u.id} className="list-item">
+          <span>
+            {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}{' '}
+            {u.name}
+          </span>
+          <span className="muted">
+            ⭐ {u.score} | ✅ {u.wins}
+          </span>
         </div>
-      )}
+      ))}
     </div>
   );
 }

@@ -1,37 +1,72 @@
 import { ethers } from 'ethers';
 import config from './config';
-import contractABI from './contractABI.json';
+import ABI from './contractABI.json';
 
-let provider, signer, contract;
+let provider = null;
+let signer = null;
+let contract = null;
 
-export const initWeb3 = async () => {
+export async function connectWallet() {
   if (typeof window === 'undefined' || !window.ethereum) {
-    throw new Error('متامسک نصب نیست');
+    throw new Error('MetaMask نصب نیست');
   }
-  
+
   provider = new ethers.BrowserProvider(window.ethereum);
+  await provider.send('eth_requestAccounts', []);
   signer = await provider.getSigner();
-  
-  if (config.contractAddress && config.contractAddress !== '0x0000000000000000000000000000000000000000') {
-    contract = new ethers.Contract(config.contractAddress, contractABI, signer);
+
+  if (config.contractAddress) {
+    contract = new ethers.Contract(config.contractAddress, ABI, signer);
   }
-  
-  return { provider, signer, contract };
-};
 
-export const getContract = () => contract;
-export const getProvider = () => provider;
-export const getSigner = () => signer;
-export const getConfig = () => config;
+  const address = await signer.getAddress();
+  const network = await provider.getNetwork();
 
-export const mintNFT = async (recipient, uri) => {
+  return {
+    address,
+    chainId: Number(network.chainId),
+  };
+}
+
+export function getContract() {
+  return contract;
+}
+
+export function isConnected() {
+  return !!signer;
+}
+
+export async function mintNFT(uri = 'https://example.com/nft.json') {
   if (!contract) throw new Error('قرارداد متصل نیست');
-  const tx = await contract.mintNFT(recipient, uri);
+  const address = await signer.getAddress();
+  const tx = await contract.mintNFT(address, uri);
   return await tx.wait();
-};
+}
 
-export const upgradeNFT = async (tokenId) => {
+export async function upgradeNFT(tokenId) {
   if (!contract) throw new Error('قرارداد متصل نیست');
   const tx = await contract.upgradeNFT(tokenId);
   return await tx.wait();
-};
+}
+
+export async function getContractInfo() {
+  if (!contract) return null;
+  try {
+    const [owner, pool, name, symbol, total] = await Promise.all([
+      contract.owner(),
+      contract.prizePool(),
+      contract.name(),
+      contract.symbol(),
+      contract.totalSupply(),
+    ]);
+    return {
+      owner,
+      prizePool: pool,
+      name,
+      symbol,
+      totalSupply: Number(total),
+    };
+  } catch (err) {
+    return null;
+  }
+}

@@ -4,32 +4,57 @@ export default function GameStatus({
   gameOver,
   winner,
   playerColors,
-  isMobile = false
+  numPlayers,
+  remaining,
 }) {
-  const getStatus = () => {
+  const status = () => {
     if (gameOver) {
-      if (winner === -1) return '🤝 مساوی!';
-      if (winner !== null) return '🏆 بازیکن ' + (winner + 1) + ' برنده شد!';
-      return '🎯 بازی تمام شد!';
+      if (winner === -1) return '🤝 مساوی';
+      return `🏆 برنده: بازیکن ${winner + 1}`;
     }
-    return currentPlayer === 0 ? '👤 نوبت شما' : '🤖 نوبت بازیکن ' + (currentPlayer + 1);
+    if (currentPlayer === 0) return '👤 نوبت شما';
+    return `🤖 نوبت بازیکن ${currentPlayer + 1}`;
   };
 
   return (
-    <div className="card" style={{ marginBottom: '16px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-        <div style={{ display: 'flex', gap: isMobile ? '8px' : '15px', flexWrap: 'wrap' }}>
-          {scores.map((score, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: isMobile ? '0.85rem' : '1rem', padding: '4px 10px', borderRadius: '20px', background: i === currentPlayer && !gameOver ? 'rgba(108,92,231,0.2)' : 'transparent', border: i === currentPlayer && !gameOver ? '1px solid rgba(108,92,231,0.3)' : 'none' }}>
-              <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '4px', background: playerColors[i] || '#000' }}></span>
-              {isMobile ? 'P' + (i+1) : 'بازیکن ' + (i+1)}: {score}
+    <div className="card">
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 8,
+          marginBottom: 8,
+        }}
+      >
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {scores.map((s, i) => (
+            <div
+              key={i}
+              className={'badge ' + (i === currentPlayer && !gameOver ? 'active' : '')}
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 3,
+                  background: playerColors[i],
+                  display: 'inline-block',
+                }}
+              />
+              بازیکن {i + 1}: {s}
             </div>
           ))}
         </div>
-        <div style={{ background: gameOver ? 'rgba(255,107,107,0.2)' : 'rgba(108,92,231,0.2)', border: gameOver ? '1px solid rgba(255,107,107,0.3)' : '1px solid rgba(108,92,231,0.3)', color: gameOver ? '#FF6B6B' : '#A29BFE', padding: isMobile ? '4px 14px' : '6px 20px', borderRadius: '30px', fontWeight: '700', fontSize: isMobile ? '0.8rem' : '0.95rem', textAlign: 'center' }}>
-          {getStatus()}
+        <div className="badge" style={{ background: gameOver ? '#ef4444' : '#6366f1', color: 'white' }}>
+          {status()}
         </div>
       </div>
+      {!gameOver && remaining !== undefined && (
+        <div className="muted center">
+          ⏳ حرکات باقی‌مانده: {remaining}
+        </div>
+      )}
     </div>
   );
 }

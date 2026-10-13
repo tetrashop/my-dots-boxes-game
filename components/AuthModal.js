@@ -1,73 +1,106 @@
 import { useState } from 'react';
 import { auth } from '../utils/auth';
 
-export default function AuthModal({ onLogin, isMobile }) {
-  const [isLogin, setIsLogin] = useState(true);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
+export default function AuthModal({ onSuccess }) {
+  const [mode, setMode] = useState('login');
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const update = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
+
+  const submit = (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    if (isLogin) {
-      const result = auth.login(email || phone || name, password);
-      if (result.success) {
-        onLogin(result.user);
-      } else {
-        setError(result.error);
-      }
+    let result;
+    if (mode === 'login') {
+      result = auth.login({
+        identifier: form.email || form.phone || form.name,
+        password: form.password,
+      });
     } else {
-      if (!name || !email || !phone || !password) {
-        setError('لطفاً همه فیلدها را پر کنید');
-        setLoading(false);
-        return;
-      }
-      const result = auth.register(name, email, phone, password);
-      if (result.success) {
-        onLogin(result.user);
-      } else {
-        setError(result.error);
-      }
+      result = auth.register(form);
     }
+
     setLoading(false);
+
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+
+    onSuccess(result.user);
   };
 
   return (
-    <div className="card" style={{ maxWidth: '420px', margin: '0 auto' }}>
-      <h3 style={{ textAlign: 'center', marginBottom: '16px', color: '#A29BFE' }}>
-        {isLogin ? '🔐 ورود' : '📝 ثبت‌نام'}
+    <div className="card">
+      <h3 style={{ marginBottom: 12 }}>
+        {mode === 'login' ? '🔐 ورود' : '📝 ثبت‌نام'}
       </h3>
-      <form onSubmit={handleSubmit}>
-        {!isLogin && (
+
+      <form onSubmit={submit}>
+        {mode === 'register' && (
           <>
-            <input type="text" placeholder="نام کامل" value={name} onChange={(e) => setName(e.target.value)} style={{ marginBottom: '10px' }} required />
-            <input type="email" placeholder="ایمیل" value={email} onChange={(e) => setEmail(e.target.value)} style={{ marginBottom: '10px' }} required />
-            <input type="tel" placeholder="شماره تلفن" value={phone} onChange={(e) => setPhone(e.target.value)} style={{ marginBottom: '10px' }} required />
+            <label>نام کامل</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => update('name', e.target.value)}
+              placeholder="مثال: رامین اجلال"
+              required
+              style={{ marginBottom: 10 }}
+            />
+            <label>شماره تلفن</label>
+            <input
+              type="tel"
+              value={form.phone}
+              onChange={(e) => update('phone', e.target.value)}
+              placeholder="09xxxxxxxxx"
+              style={{ marginBottom: 10 }}
+            />
           </>
         )}
-        {isLogin && (
-          <input type="text" placeholder="نام، ایمیل یا تلفن" value={email} onChange={(e) => setEmail(e.target.value)} style={{ marginBottom: '10px' }} required />
-        )}
-        <input type="password" placeholder="رمز عبور" value={password} onChange={(e) => setPassword(e.target.value)} style={{ marginBottom: '10px' }} required />
-        {error && <p style={{ color: '#FF6B6B', fontSize: '0.9rem', marginBottom: '8px' }}>{error}</p>}
-        <button type="submit" style={{ width: '100%', padding: '12px', fontSize: '1rem' }} disabled={loading}>
-          {loading ? '⏳ ...' : (isLogin ? 'ورود' : 'ثبت‌نام')}
+
+        <label>{mode === 'login' ? 'نام، ایمیل یا تلفن' : 'ایمیل'}</label>
+        <input
+          type={mode === 'login' ? 'text' : 'email'}
+          value={form.email}
+          onChange={(e) => update('email', e.target.value)}
+          placeholder="example@email.com"
+          required
+          style={{ marginBottom: 10 }}
+        />
+
+        <label>رمز عبور</label>
+        <input
+          type="password"
+          value={form.password}
+          onChange={(e) => update('password', e.target.value)}
+          placeholder="••••••"
+          required
+          style={{ marginBottom: 10 }}
+        />
+
+        {error && <div className="alert alert-danger">{error}</div>}
+
+        <button type="submit" disabled={loading} style={{ width: '100%', marginTop: 12 }}>
+          {loading ? '⏳ ...' : mode === 'login' ? 'ورود' : 'ثبت‌نام'}
         </button>
       </form>
-      <p style={{ textAlign: 'center', marginTop: '16px', color: 'rgba(255,255,255,0.6)' }}>
-        {isLogin ? 'حساب ندارید؟' : 'حساب دارید؟'}
-        <button onClick={() => { setIsLogin(!isLogin); setError(''); }} style={{ background: 'none', border: 'none', color: '#A29BFE', fontWeight: '600', cursor: 'pointer', marginRight: '4px', padding: '4px 8px' }}>
-          {isLogin ? 'ثبت‌نام کنید' : 'وارد شوید'}
+
+      <div className="center" style={{ marginTop: 12 }}>
+        <button
+          className="ghost"
+          onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}
+        >
+          {mode === 'login' ? 'حساب ندارید؟ ثبت‌نام' : 'حساب دارید؟ ورود'}
         </button>
-      </p>
-      <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', marginTop: '12px' }}>
-        🎁 با ثبت‌نام ۱۰ اعتبار رایگان دریافت کنید
+      </div>
+
+      <p className="center muted" style={{ marginTop: 10 }}>
+        🎁 با ثبت‌نام ۱۰۰ اعتبار رایگان دریافت کنید
       </p>
     </div>
   );

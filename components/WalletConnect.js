@@ -1,116 +1,53 @@
 import { useState, useEffect } from 'react';
+import { connectWallet, getContractInfo, isConnected } from '../utils/web3';
 
-export default function WalletConnect({ onConnect }) {
+export default function WalletConnect() {
   const [address, setAddress] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [status, setStatus] = useState('idle');
+  const [info, setInfo] = useState(null);
 
   useEffect(() => {
-    const checkInstall = () => {
-      if (typeof window !== 'undefined') {
-        const hasEthereum = window.ethereum !== undefined && window.ethereum !== null;
-        const isMetaMask = hasEthereum && window.ethereum.isMetaMask === true;
-        setIsInstalled(!!isMetaMask);
-      }
-    };
-    checkInstall();
-
-    // گوش دادن به تغییرات
     if (typeof window !== 'undefined' && window.ethereum) {
-      window.ethereum.on('accountsChanged', () => window.location.reload());
-      window.ethereum.on('chainChanged', () => window.location.reload());
+      window.ethereum.request({ method: 'eth_accounts' })
+        .then((accounts) => {
+          if (accounts.length > 0) setAddress(accounts[0]);
+        })
+        .catch(() => {});
     }
   }, []);
 
-  const connectWallet = async () => {
-    setLoading(true);
-    setError('');
-    
+  const connect = async () => {
+    setStatus('connecting');
     try {
-      if (typeof window === 'undefined' || !window.ethereum) {
-        const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-        if (isMobile) {
-          window.open('https://metamask.app.link/dapp/' + window.location.href, '_blank');
-          setError('لطفاً متامسک را باز کنید و سپس به این صفحه برگردید.');
-          setLoading(false);
-          return;
-        }
-        throw new Error('متامسک نصب نیست!');
-      }
-
-      const accounts = await window.ethereum.request({ 
-        method: 'eth_requestAccounts' 
-      });
-      
-      if (accounts && accounts.length > 0) {
-        setAddress(accounts[0]);
-        if (onConnect) onConnect(accounts[0]);
-      } else {
-        setError('هیچ حسابی یافت نشد');
-      }
+      const res = await connectWallet();
+      setAddress(res.address);
+      setStatus('connected');
+      const cInfo = await getContractInfo();
+      setInfo(cInfo);
     } catch (err) {
-      console.error('Error:', err);
-      if (err.code === 4001) {
-        setError('درخواست اتصال رد شد');
-      } else if (err.code === -32002) {
-        setError('لطفاً درخواست متامسک را تأیید کنید');
-      } else {
-        setError('خطا: ' + (err.message || 'مشکل در اتصال'));
-      }
+      setStatus('error');
+      alert(err.message);
     }
-    setLoading(false);
   };
 
+  if (address && status === 'connected') {
+    return (
+      <button
+        className="success"
+        onClick={() => {
+          setAddress('');
+          setStatus('idle');
+        }}
+        title={info ? `قرارداد: ${info.name}` : 'متصل'}
+      >
+        🟢 {address.slice(0, 6)}...{address.slice(-4)}
+      </button>
+    );
+  }
+
   return (
-    <div>
-      {!isInstalled ? (
-        <button
-          onClick={() => window.open('https://metamask.io/download/', '_blank')}
-          style={{
-            background: '#FF6B6B',
-            padding: '6px 14px',
-            borderRadius: '30px',
-            border: 'none',
-            color: 'white',
-            fontWeight: '600',
-            cursor: 'pointer',
-            fontSize: '0.9rem'
-          }}
-        >
-          📥 نصب متامسک
-        </button>
-      ) : (
-        <button
-          onClick={connectWallet}
-          style={{
-            background: address ? '#00B894' : '#6C5CE7',
-            padding: '6px 14px',
-            borderRadius: '30px',
-            border: 'none',
-            color: 'white',
-            fontWeight: '600',
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-            opacity: loading ? 0.6 : 1
-          }}
-          disabled={loading}
-        >
-          {loading ? '⏳ ...' : address ? `🟢 ${address.slice(0,6)}...${address.slice(-4)}` : '🔗 اتصال کیف پول'}
-        </button>
-      )}
-      {error && (
-        <div style={{
-          marginTop: '4px',
-          padding: '4px 10px',
-          background: 'rgba(255,107,107,0.15)',
-          borderRadius: '8px',
-          color: '#FF6B6B',
-          fontSize: '0.8rem'
-        }}>
-          {error}
-        </div>
-      )}
-    </div>
+    <button onClick={connect} disabled={status === 'connecting'}>
+      {status === 'connecting' ? '⏳ ...' : '🔗 اتصال کیف پول'}
+    </button>
   );
 }

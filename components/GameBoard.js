@@ -1,427 +1,283 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-export default function GameBoard({ 
-  game, 
-  onMove, 
+const COLORS = {
+  bg: '#0b1120',
+  dot: '#94a3b8',
+  dotActive: '#fbbf24',
+  line: '#475569',
+  tempValid: '#10b981',
+  tempInvalid: '#ef4444',
+};
+
+export default function GameBoard({
+  game,
+  onMove,
   playerColors,
   gridSize,
-  isMobile = false,
-  suggestedMove = null
+  isMobile,
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
-  const [ctx, setCtx] = useState(null);
-  const [dimensions, setDimensions] = useState({ cellSize: 50, padding: 40, totalSize: 0 });
-  const [isDragging, setIsDragging] = useState(false);
+  const [dims, setDims] = useState({ cell: 50, pad: 30, total: 0 });
+  const [dragging, setDragging] = useState(false);
   const [startDot, setStartDot] = useState(null);
-  const [currentDot, setCurrentDot] = useState(null);
-  const [renderKey, setRenderKey] = useState(0);
-  const [blinkState, setBlinkState] = useState(true);
+  const [hoverDot, setHoverDot] = useState(null);
 
-  useEffect(() => {
-    if (!suggestedMove) return;
-    const interval = setInterval(() => setBlinkState(prev => !prev), 500);
-    return () => clearInterval(interval);
-  }, [suggestedMove]);
+  // محاسبه ابعاد
+  const calcDims = useCallback(() => {
+    const cell = isMobile ? 40 : 55;
+    const pad = isMobile ? 20 : 30;
+    const total = (gridSize - 1) * cell + pad * 2;
+    return { cell, pad, total };
+  }, [gridSize, isMobile]);
 
-  const getSizes = useCallback(() => {
-    const baseCell = isMobile ? 38 : 50;
-    const basePadding = isMobile ? 28 : 40;
-    const dotRadius = isMobile ? 5 : 7;
-    return { cellSize: baseCell, padding: basePadding, dotRadius };
-  }, [isMobile]);
-
-  const calculateDimensions = useCallback(() => {
-    const { cellSize, padding } = getSizes();
-    const boxes = gridSize - 1;
-    const totalSize = boxes * cellSize + padding * 2;
-    return { cellSize, padding, totalSize };
-  }, [gridSize, getSizes]);
-
-  useEffect(() => {
-    setRenderKey(prev => prev + 1);
-  }, [game, suggestedMove]);
-
+  // رسم تخته
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const context = canvas.getContext('2d');
-    setCtx(context);
-    const dims = calculateDimensions();
-    setDimensions(dims);
-    const containerWidth = containerRef.current?.clientWidth || 500;
-    const maxSize = Math.min(containerWidth - 20, 600);
-    const scale = Math.min(1, maxSize / dims.totalSize);
-    const displaySize = dims.totalSize * scale;
-    canvas.width = dims.totalSize;
-    canvas.height = dims.totalSize;
+    if (!canvas || !game) return;
+    const ctx = canvas.getContext('2d');
+    const d = calcDims();
+    setDims(d);
+
+    // اندازه نمایشی responsive
+    const containerW = containerRef.current?.clientWidth || 500;
+    const maxSize = Math.min(containerW - 10, 600);
+    const scale = Math.min(1, maxSize / d.total);
+    const displaySize = Math.floor(d.total * scale);
+
+    canvas.width = d.total;
+    canvas.height = d.total;
     canvas.style.width = displaySize + 'px';
     canvas.style.height = displaySize + 'px';
-    drawBoard(context, dims);
-  }, [game, playerColors, renderKey, calculateDimensions, suggestedMove, blinkState]);
 
-  const drawBoard = (context, dims) => {
-    if (!game) return;
-    const { cellSize, padding, totalSize } = dims;
-    const { dotRadius } = getSizes();
-    const gridSize = game.gridSize;
-    const dots = gridSize;
-    const boxes = gridSize - 1;
-    
-    context.clearRect(0, 0, totalSize, totalSize);
-    context.fillStyle = 'rgba(255,255,255,0.05)';
-    context.fillRect(0, 0, totalSize, totalSize);
+    draw(ctx, d);
+  }, [game, playerColors, dragging, startDot, hoverDot, calcDims]);
 
-    // ===== ۱. رسم نقاط =====
+  const draw = (ctx, d) => {
+    const { cell, pad, total } = d;
+    const dots = game.gridSize;
+    const boxes = game.gridSize - 1;
+
+    // پس‌زمینه
+    ctx.fillStyle = COLORS.bg;
+    ctx.fillRect(0, 0, total, total);
+
+    // نقاط
     for (let r = 0; r < dots; r++) {
       for (let c = 0; c < dots; c++) {
-        const x = padding + c * cellSize;
-        const y = padding + r * cellSize;
-        const isStart = startDot && startDot.row === r && startDot.col === c;
-        const isHover = currentDot && currentDot.row === r && currentDot.col === c;
+        const x = pad + c * cell;
+        const y = pad + r * cell;
+        const isStart = startDot && startDot.r === r && startDot.c === c;
+        const isHover = hoverDot && hoverDot.r === r && hoverDot.c === c;
 
         if (isStart || isHover) {
-          context.beginPath();
-          context.arc(x, y, dotRadius * 2.5, 0, 2 * Math.PI);
-          context.fillStyle = isStart ? 'rgba(108, 92, 231, 0.3)' : 'rgba(0, 206, 201, 0.2)';
-          context.fill();
+          ctx.beginPath();
+          ctx.arc(x, y, 12, 0, 2 * Math.PI);
+          ctx.fillStyle = 'rgba(251, 191, 36, 0.25)';
+          ctx.fill();
         }
-        context.beginPath();
-        context.arc(x, y, isStart ? dotRadius * 1.8 : dotRadius, 0, 2 * Math.PI);
-        context.fillStyle = isStart ? '#6C5CE7' : 'rgba(255,255,255,0.8)';
-        context.fill();
-        context.strokeStyle = 'rgba(255,255,255,0.2)';
-        context.lineWidth = 1.5;
-        context.stroke();
+
+        ctx.beginPath();
+        ctx.arc(x, y, isStart ? 9 : 6, 0, 2 * Math.PI);
+        ctx.fillStyle = isStart ? COLORS.dotActive : COLORS.dot;
+        ctx.fill();
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
       }
     }
 
-    // ===== ۲. خطوط افقی (dots × boxes) =====
+    // خطوط افقی
     for (let r = 0; r < dots; r++) {
       for (let c = 0; c < boxes; c++) {
-        if (game.horizontalLines && game.horizontalLines[r] && game.horizontalLines[r][c]) {
-          const x1 = padding + c * cellSize;
-          const y1 = padding + r * cellSize;
-          const x2 = padding + (c + 1) * cellSize;
-          context.beginPath();
-          context.moveTo(x1, y1);
-          context.lineTo(x2, y1);
-          context.strokeStyle = 'rgba(255,255,255,0.8)';
-          context.lineWidth = 4;
-          context.shadowColor = 'rgba(108, 92, 231, 0.3)';
-          context.shadowBlur = 8;
-          context.stroke();
-          context.shadowBlur = 0;
+        if (game.horizontalLines[r][c]) {
+          const x1 = pad + c * cell;
+          const y1 = pad + r * cell;
+          const x2 = pad + (c + 1) * cell;
+          let color = '#64748b';
+          if (r > 0 && game.boxes[r - 1] && game.boxes[r - 1][c]) {
+            color = playerColors[game.boxes[r - 1][c] - 1];
+          } else if (r < boxes && game.boxes[r] && game.boxes[r][c]) {
+            color = playerColors[game.boxes[r][c] - 1];
+          }
+          drawLine(ctx, x1, y1, x2, y1, color, 4);
         }
       }
     }
 
-    // ===== ۳. خطوط عمودی (boxes × dots) =====
+    // خطوط عمودی
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < dots; c++) {
-        if (game.verticalLines && game.verticalLines[r] && game.verticalLines[r][c]) {
-          const x1 = padding + c * cellSize;
-          const y1 = padding + r * cellSize;
+        if (game.verticalLines[r][c]) {
+          const x1 = pad + c * cell;
+          const y1 = pad + r * cell;
           const x2 = x1;
-          const y2 = padding + (r + 1) * cellSize;
-          context.beginPath();
-          context.moveTo(x1, y1);
-          context.lineTo(x2, y2);
-          context.strokeStyle = 'rgba(255,255,255,0.8)';
-          context.lineWidth = 4;
-          context.shadowColor = 'rgba(108, 92, 231, 0.3)';
-          context.shadowBlur = 8;
-          context.stroke();
-          context.shadowBlur = 0;
+          const y2 = pad + (r + 1) * cell;
+          let color = '#64748b';
+          if (c > 0 && game.boxes[r] && game.boxes[r][c - 1]) {
+            color = playerColors[game.boxes[r][c - 1] - 1];
+          } else if (c < boxes && game.boxes[r] && game.boxes[r][c]) {
+            color = playerColors[game.boxes[r][c] - 1];
+          }
+          drawLine(ctx, x1, y1, x2, y2, color, 4);
         }
       }
     }
 
-    // ===== ۴. خط پیشنهادی مربی =====
-    if (suggestedMove && blinkState) {
-      const { row, col, isHorizontal } = suggestedMove;
-      const color = '#FDCB6E';
-      if (isHorizontal) {
-        const x1 = padding + col * cellSize;
-        const y1 = padding + row * cellSize;
-        const x2 = padding + (col + 1) * cellSize;
-        context.shadowColor = 'rgba(253, 203, 110, 0.6)';
-        context.shadowBlur = 24;
-        context.beginPath();
-        context.moveTo(x1, y1);
-        context.lineTo(x2, y1);
-        context.strokeStyle = color;
-        context.lineWidth = 6;
-        context.lineCap = 'round';
-        context.setLineDash([8, 6]);
-        context.stroke();
-        context.setLineDash([]);
-        context.shadowBlur = 0;
-        context.fillStyle = color;
-        context.font = '16px sans-serif';
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.fillText('⬅️', x1, y1 - 14);
-        context.fillText('➡️', x2, y1 - 14);
-      } else {
-        const x1 = padding + col * cellSize;
-        const y1 = padding + row * cellSize;
-        const x2 = x1;
-        const y2 = padding + (row + 1) * cellSize;
-        context.shadowColor = 'rgba(253, 203, 110, 0.6)';
-        context.shadowBlur = 24;
-        context.beginPath();
-        context.moveTo(x1, y1);
-        context.lineTo(x2, y2);
-        context.strokeStyle = color;
-        context.lineWidth = 6;
-        context.lineCap = 'round';
-        context.setLineDash([8, 6]);
-        context.stroke();
-        context.setLineDash([]);
-        context.shadowBlur = 0;
-        context.fillStyle = color;
-        context.font = '16px sans-serif';
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.fillText('⬆️', x1 - 16, y1 + (y2-y1)/2);
-        context.fillText('⬇️', x1 + 16, y1 + (y2-y1)/2);
+    // خط پیش‌نمایش
+    if (dragging && startDot && hoverDot) {
+      const isAdj =
+        (Math.abs(startDot.r - hoverDot.r) === 1 && startDot.c === hoverDot.c) ||
+        (Math.abs(startDot.c - hoverDot.c) === 1 && startDot.r === hoverDot.r);
+      if (isAdj) {
+        const x1 = pad + startDot.c * cell;
+        const y1 = pad + startDot.r * cell;
+        const x2 = pad + hoverDot.c * cell;
+        const y2 = pad + hoverDot.r * cell;
+        const valid =
+          isAdj &&
+          game.isValidMove(
+            Math.min(startDot.r, hoverDot.r),
+            Math.min(startDot.c, hoverDot.c),
+            startDot.r === hoverDot.r
+          );
+        drawLine(
+          ctx,
+          x1,
+          y1,
+          x2,
+          y2,
+          valid ? COLORS.tempValid : COLORS.tempInvalid,
+          4,
+          valid ? [] : [6, 6]
+        );
       }
     }
 
-    // ===== ۵. خط موقت =====
-    if (isDragging && startDot && currentDot) {
-      const x1 = padding + startDot.col * cellSize;
-      const y1 = padding + startDot.row * cellSize;
-      const x2 = padding + currentDot.col * cellSize;
-      const y2 = padding + currentDot.row * cellSize;
-
-      const isAdjacent = (Math.abs(startDot.row - currentDot.row) + Math.abs(startDot.col - currentDot.col) === 1);
-      const isValid = isAdjacent && (startDot.row === currentDot.row || startDot.col === currentDot.col);
-
-      context.shadowColor = isValid ? 'rgba(0, 206, 201, 0.5)' : 'rgba(255, 107, 107, 0.5)';
-      context.shadowBlur = 20;
-      context.beginPath();
-      context.moveTo(x1, y1);
-      context.lineTo(x2, y2);
-      context.strokeStyle = isValid ? '#00CEC9' : '#FF6B6B';
-      context.lineWidth = isValid ? 4 : 2;
-      if (!isValid) context.setLineDash([6, 6]);
-      context.lineCap = 'round';
-      context.stroke();
-      context.setLineDash([]);
-      context.shadowBlur = 0;
-    }
-
-    // ===== ۶. مربع‌های پر شده =====
+    // مربع‌ها
     for (let r = 0; r < boxes; r++) {
       for (let c = 0; c < boxes; c++) {
-        if (game.boxes && game.boxes[r] && game.boxes[r][c] && game.boxes[r][c] !== 0) {
-          const x = padding + c * cellSize;
-          const y = padding + r * cellSize;
+        if (game.boxes[r][c] !== 0) {
+          const x = pad + c * cell;
+          const y = pad + r * cell;
           const color = playerColors[game.boxes[r][c] - 1];
-          context.fillStyle = color + '30';
-          context.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
-          context.strokeStyle = color;
-          context.lineWidth = 2.5;
-          context.strokeRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
-          context.fillStyle = color;
-          context.font = `bold ${cellSize * 0.4}px "Vazirmatn", sans-serif`;
-          context.textAlign = 'center';
-          context.textBaseline = 'middle';
-          context.shadowColor = 'rgba(0,0,0,0.2)';
-          context.shadowBlur = 4;
-          context.fillText('✓', x + cellSize/2, y + cellSize/2);
-          context.shadowBlur = 0;
+          ctx.fillStyle = color + '33';
+          ctx.fillRect(x + 2, y + 2, cell - 4, cell - 4);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
         }
       }
     }
   };
 
-  // ===== توابع کمکی =====
-  const getCanvasCoords = (clientX, clientY) => {
+  const drawLine = (ctx, x1, y1, x2, y2, color, width, dash = []) => {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.setLineDash(dash);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  };
+
+  // تبدیل مختصات
+  const getCoords = (e) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
     return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY
+      x: ((e.clientX - rect.left) * canvas.width) / rect.width,
+      y: ((e.clientY - rect.top) * canvas.height) / rect.height,
     };
   };
 
-  const findNearestDot = (x, y) => {
-    const { cellSize, padding } = dimensions;
-    const gridSize = game.gridSize;
-    const dots = gridSize;
-    const threshold = 30;
-    let minDist = threshold;
-    let nearest = null;
-    
+  const findDot = (x, y) => {
+    const { cell, pad } = dims;
+    const dots = game.gridSize;
+    const threshold = 25;
+    let best = null;
+    let min = threshold;
     for (let r = 0; r < dots; r++) {
       for (let c = 0; c < dots; c++) {
-        const dotX = padding + c * cellSize;
-        const dotY = padding + r * cellSize;
-        const dist = Math.hypot(x - dotX, y - dotY);
-        if (dist < minDist) {
-          minDist = dist;
-          nearest = { row: r, col: c };
+        const dx = pad + c * cell;
+        const dy = pad + r * cell;
+        const dist = Math.hypot(x - dx, y - dy);
+        if (dist < min) {
+          min = dist;
+          best = { r, c };
         }
       }
     }
-    return nearest;
+    return best;
   };
 
-  const isValidLine = (dot1, dot2) => {
-    if (!dot1 || !dot2) return false;
-    const dr = Math.abs(dot1.row - dot2.row);
-    const dc = Math.abs(dot1.col - dot2.col);
-    return (dr === 0 && dc === 1) || (dr === 1 && dc === 0);
-  };
-
-  const getLineData = (dot1, dot2) => {
-    if (!isValidLine(dot1, dot2)) return null;
-    const row = Math.min(dot1.row, dot2.row);
-    const col = Math.min(dot1.col, dot2.col);
-    const isHorizontal = (dot1.row === dot2.row);
-    return { row, col, isHorizontal };
-  };
-
-  const isLineDrawn = (line) => {
-    if (!line) return true;
-    if (line.isHorizontal) {
-      return game.horizontalLines && game.horizontalLines[line.row] && game.horizontalLines[line.row][line.col] || false;
-    }
-    return game.verticalLines && game.verticalLines[line.row] && game.verticalLines[line.row][line.col] || false;
-  };
-
-  // ===== رویدادها =====
-  const handlePointerDown = (e) => {
+  // رویدادها
+  const handleDown = (e) => {
     e.preventDefault();
-    if (game.gameOver || game.currentPlayer !== 0) return;
-    const coords = getCanvasCoords(e.clientX, e.clientY);
-    const dot = findNearestDot(coords.x, coords.y);
+    if (!game || game.gameOver || game.currentPlayer !== 0) return;
+    const { x, y } = getCoords(e);
+    const dot = findDot(x, y);
     if (dot) {
       setStartDot(dot);
-      setCurrentDot(dot);
-      setIsDragging(true);
+      setHoverDot(dot);
+      setDragging(true);
     }
   };
 
-  const handlePointerMove = (e) => {
+  const handleMove = (e) => {
     e.preventDefault();
-    const coords = getCanvasCoords(e.clientX, e.clientY);
-    const dot = findNearestDot(coords.x, coords.y);
-    setCurrentDot(dot);
-    if (isDragging && ctx) {
-      const dims = calculateDimensions();
-      drawBoard(ctx, dims);
-    }
+    if (!game) return;
+    const { x, y } = getCoords(e);
+    const dot = findDot(x, y);
+    setHoverDot(dot);
   };
 
-  const handlePointerUp = (e) => {
+  const handleUp = (e) => {
     e.preventDefault();
-    if (!isDragging || !startDot) {
-      resetDragState();
+    if (!dragging || !startDot) {
+      resetState();
       return;
     }
-    const coords = getCanvasCoords(e.clientX, e.clientY);
-    const endDot = findNearestDot(coords.x, coords.y);
-    if (endDot && startDot) {
-      const line = getLineData(startDot, endDot);
-      if (line && !isLineDrawn(line)) {
-        onMove(line.row, line.col, line.isHorizontal);
+    const { x, y } = getCoords(e);
+    const end = findDot(x, y);
+
+    if (end && startDot) {
+      const isAdj =
+        (Math.abs(startDot.r - end.r) === 1 && startDot.c === end.c) ||
+        (Math.abs(startDot.c - end.c) === 1 && startDot.r === end.r);
+
+      if (isAdj) {
+        const row = Math.min(startDot.r, end.r);
+        const col = Math.min(startDot.c, end.c);
+        const isH = startDot.r === end.r;
+        if (game.isValidMove(row, col, isH)) {
+          onMove(row, col, isH);
+        }
       }
     }
-    resetDragState();
+    resetState();
   };
 
-  const handlePointerLeave = () => {
-    if (isDragging) resetDragState();
-  };
-
-  const resetDragState = () => {
-    setIsDragging(false);
+  const resetState = () => {
+    setDragging(false);
     setStartDot(null);
-    setCurrentDot(null);
-    if (ctx) {
-      const dims = calculateDimensions();
-      drawBoard(ctx, dims);
-    }
+    setHoverDot(null);
   };
 
   return (
-    <div ref={containerRef} style={{
-      position: 'relative',
-      width: '100%',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      background: 'rgba(255,255,255,0.03)',
-      borderRadius: '16px',
-      padding: '8px',
-      touchAction: 'none',
-      minHeight: '280px',
-      userSelect: 'none',
-      border: '1px solid rgba(255,255,255,0.05)'
-    }}>
-      <canvas ref={canvasRef} style={{
-        display: 'block',
-        maxWidth: '100%',
-        height: 'auto',
-        cursor: (game.gameOver || game.currentPlayer !== 0) ? 'default' : 'pointer',
-        touchAction: 'none',
-        borderRadius: '12px',
-        background: 'rgba(255,255,255,0.02)'
-      }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerLeave}
-        onPointerCancel={handlePointerUp} />
-      
-      {isDragging && <div style={{
-        position: 'absolute',
-        top: '12px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        background: 'rgba(0,0,0,0.75)',
-        color: 'white',
-        padding: '6px 20px',
-        borderRadius: '30px',
-        fontSize: '13px',
-        fontWeight: '600',
-        backdropFilter: 'blur(8px)',
-        pointerEvents: 'none',
-        whiteSpace: 'nowrap',
-        zIndex: 10,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-      }}>
-        {startDot && currentDot && isValidLine(startDot, currentDot) ? '✅ رها کنید تا خط رسم شود' : '📍 به نقطه مجاور بروید'}
-      </div>}
-      
-      {game.gameOver && <div style={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        background: 'rgba(0,0,0,0.8)',
-        color: 'white',
-        padding: '20px 32px',
-        borderRadius: '20px',
-        fontSize: isMobile ? '1.2rem' : '1.6rem',
-        fontWeight: 'bold',
-        textAlign: 'center',
-        backdropFilter: 'blur(12px)',
-        pointerEvents: 'none',
-        zIndex: 10,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
-      }}>
-        🎯 بازی تمام شد!
-        <div style={{ fontSize: '0.9rem', marginTop: '8px', opacity: 0.9 }}>
-          {game.getWinner() !== null && game.getWinner() !== -1 ? `🏆 بازیکن ${game.getWinner() + 1} برنده شد!` : game.getWinner() === -1 ? '🤝 مساوی!' : ''}
-        </div>
-      </div>}
+    <div className="canvas-wrapper" ref={containerRef}>
+      <canvas
+        ref={canvasRef}
+        onMouseDown={handleDown}
+        onMouseMove={handleMove}
+        onMouseUp={handleUp}
+        onMouseLeave={resetState}
+        onTouchStart={handleDown}
+        onTouchMove={handleMove}
+        onTouchEnd={handleUp}
+      />
     </div>
   );
 }
