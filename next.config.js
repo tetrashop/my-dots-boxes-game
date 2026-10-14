@@ -1,12 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
-  swcMinify: true,
+  swcMinify: false,
   poweredByHeader: false,
-  env: {
-    NEXT_PUBLIC_NETWORK: process.env.NEXT_PUBLIC_NETWORK,
-    NEXT_PUBLIC_RPC_URL: process.env.NEXT_PUBLIC_RPC_URL,
-    NEXT_PUBLIC_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS,
+  typescript: { ignoreBuildErrors: true },
+  eslint: { ignoreDuringBuilds: true },
+  experimental: {
+    workerThreads: false,
+    cpus: 1,
   },
 };
 

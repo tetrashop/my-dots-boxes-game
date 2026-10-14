@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { auth } from '../utils/auth';
 import { getScoreLevel } from '../utils/scoring';
-import WalletConnect from './WalletConnect';
 
 export default function Dashboard({ user, onLogout, onPlay }) {
   const [bonusMsg, setBonusMsg] = useState('');
@@ -56,7 +55,6 @@ export default function Dashboard({ user, onLogout, onPlay }) {
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <WalletConnect />
           <button className="success" onClick={claimBonus}>🎁 جایزه</button>
           <button className="warning" onClick={share}>📤 اشتراک</button>
           <button className="danger" onClick={onLogout}>🚪 خروج</button>
